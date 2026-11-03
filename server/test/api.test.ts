@@ -78,7 +78,8 @@ describe('Mango Invoice API', () => {
     assert.equal(r1.status, 200);
     const bad = await request(app).post('/api/auth/otp/verify').send({ phone: '9810000001', code: '000000' === r1.body.devCode ? '111111' : '000000' });
     assert.equal(bad.status, 400);
-    const ok = await request(app).post('/api/auth/otp/verify').send({ phone: '+91 98100 00001', code: r1.body.devCode, name: 'Ramesh' });
+    // the same number typed with a leading 0 is the same account
+    const ok = await request(app).post('/api/auth/otp/verify').send({ phone: '098100 00001', code: r1.body.devCode, name: 'Ramesh' });
     assert.equal(ok.status, 200);
     assert.equal(ok.body.isNew, true);
     token = ok.body.accessToken;

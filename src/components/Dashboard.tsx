@@ -48,6 +48,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   } = useBilling();
 
   const t = TRANSLATIONS[language];
+  const hiLang = language === 'hi';
 
   // Calculations for current active business
   const currentInvoices = invoices.filter(i => i.businessId === activeBusiness.id);
@@ -85,8 +86,40 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const unpaidCount = liveInvoices.filter(i => i.status === 'UNPAID' || i.status === 'PARTIALLY_PAID').length;
 
+  // first-run checklist: a new business has no data yet, so say what to do instead of showing zeros
+  const bizProducts = products.filter(p => p.businessId === activeBusiness.id);
+  const bizParties = parties.filter(p => p.businessId === activeBusiness.id);
+  const steps = [
+    { done: !!(activeBusiness.address && (activeBusiness.gstin || activeBusiness.upiId)), label: hiLang ? 'स्टोर प्रोफाइल पूरी करें (पता, GSTIN, UPI)' : 'Complete your store profile (address, GSTIN, UPI ID)', cta: hiLang ? 'खोलें' : 'Open', go: () => onNavigateTab('audit') },
+    { done: bizProducts.length > 0, label: hiLang ? 'आइटम जोड़ें या CSV से इम्पोर्ट करें' : 'Add your items (or import a CSV)', cta: hiLang ? 'आइटम' : 'Add items', go: () => onNavigateTab('inventory') },
+    { done: bizParties.some(p => p.type === 'CUSTOMER'), label: hiLang ? 'ग्राहक जोड़ें' : 'Add a customer', cta: hiLang ? 'ग्राहक' : 'Add customer', go: () => onNavigateTab('parties') },
+    { done: currentInvoices.length > 0, label: hiLang ? 'पहली GST इनवॉइस बनाएं' : 'Create your first GST invoice', cta: hiLang ? 'इनवॉइस' : 'New invoice', go: onOpenNewInvoice }
+  ];
+  const showGetStarted = currentInvoices.length === 0;
+
   return (
     <div className="space-y-6 pb-12">
+      {showGetStarted && (
+        <div className="bg-white border-2 border-mango-200 rounded-3xl p-5 sm:p-6">
+          <h2 className="text-lg font-black text-ink">{hiLang ? 'शुरू करें' : 'Get started'} · {activeBusiness.tradeName || activeBusiness.name}</h2>
+          <p className="text-xs text-stone-500 mt-0.5">
+            {hiLang ? 'आपका बिजनेस नया है, इसलिए अभी कोई बिक्री नहीं दिख रही। ये 4 कदम पूरे करें:' : 'Your business is new, so there are no sales to show yet. Finish these 4 steps:'}
+          </p>
+          <div className="mt-4 space-y-2">
+            {steps.map((st, i) => (
+              <div key={i} className={`flex items-center justify-between gap-3 rounded-2xl border p-3 ${st.done ? 'border-leaf-100 bg-leaf-50/50' : 'border-mango-100'}`}>
+                <div className="flex items-center gap-3 text-xs">
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-[11px] ${st.done ? 'bg-leaf-500 text-white' : 'bg-mango-100 text-mango-700'}`}>{st.done ? '✓' : i + 1}</span>
+                  <span className={st.done ? 'text-stone-400 line-through' : 'font-semibold text-ink'}>{st.label}</span>
+                </div>
+                {!st.done && (
+                  <button onClick={st.go} className="shrink-0 text-xs font-bold text-white bg-mango-500 hover:bg-mango-600 px-3 py-1.5 rounded-xl">{st.cta}</button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {/* Top Gorgeous Mango Gradient Sales Card (Matching screenshot style) */}
       <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 rounded-3xl p-6 sm:p-8 text-ink shadow-2xl shadow-mango-500/25 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>

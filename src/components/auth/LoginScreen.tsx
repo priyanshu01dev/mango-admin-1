@@ -83,7 +83,7 @@ export const LoginScreen: React.FC = () => {
                 <span className="text-stone-500 font-semibold">Mobile number</span>
                 <div className="relative mt-1">
                   <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-stone-500 font-semibold">+91</span>
-                  <input inputMode="numeric" required value={phone} onChange={e => setPhone(e.target.value.replace(/[^\d ]/g, ''))} className={`${inputCls} pl-10`} placeholder="98100 12345" />
+                  <input inputMode="numeric" required value={phone} onChange={e => setPhone(e.target.value.replace(/[^\d +]/g, ''))} className={`${inputCls} pl-10`} placeholder="98100 12345" />
                 </div>
               </label>
               <PrimaryButton type="submit" disabled={busy} className="w-full justify-center py-2.5"><Smartphone className="w-3.5 h-3.5" /> {busy ? 'Sending…' : 'Send OTP'}</PrimaryButton>

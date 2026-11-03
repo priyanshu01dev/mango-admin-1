@@ -61,8 +61,11 @@ export async function revokeRefreshToken(token: string) {
 }
 
 export function normalizePhone(phone: string) {
-  const digits = phone.replace(/\D/g, '');
-  const local = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits;
+  // accepts 9572434017, 09572434017, 919572434017, +91 95724 34017, 0091 9572434017
+  let local = phone.replace(/\D/g, '');
+  if (local.length === 14 && local.startsWith('0091')) local = local.slice(4);
+  else if (local.length === 12 && local.startsWith('91')) local = local.slice(2);
+  else if (local.length === 11 && local.startsWith('0')) local = local.slice(1);
   if (!/^[6-9]\d{9}$/.test(local)) throw badRequest('Enter a valid 10-digit Indian mobile number');
   return '+91' + local;
 }

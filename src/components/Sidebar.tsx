@@ -134,7 +134,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
             </span>
           </div>
           <p className="text-[10px] text-stone-500 font-medium">
-            {hi ? 'सुपर एडमिन पैनल' : 'Super Admin Panel'}
+            {isPlatformAdmin ? (hi ? 'सुपर एडमिन पैनल' : 'Super Admin Panel') : hi ? 'जीएसटी बिलिंग' : 'GST Billing'}
           </p>
         </div>
       </div>
