@@ -31,7 +31,8 @@ const profileSchema = z.object({
   pincode: z.string().regex(/^\d{6}$/).or(z.literal('')).optional(),
   bank: z.object({ name: z.string(), accountNumber: z.string(), ifsc: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/).or(z.literal('')), branch: z.string() }).partial().optional(),
   upiId: z.string().regex(/^[\w.-]{2,}@[a-zA-Z]{2,}$/).or(z.literal('')).optional(),
-  signatureText: z.string().max(120).optional()
+  signatureText: z.string().max(120).optional(),
+  lutNumber: z.string().max(30).optional()
 });
 
 function checkTaxIds(b: { gstin?: string; pan?: string; stateCode: string; gstType?: string }) {

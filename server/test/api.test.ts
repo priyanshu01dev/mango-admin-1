@@ -369,3 +369,109 @@ describe('Phase 1: invoice extras, GSTR-1 JSON, import, export', () => {
     assert.equal(blocked.status, 403);
   });
 });
+
+describe('Phase 2: recurring, books, GSTR-2B, public link, Tally, export', () => {
+  let h: Record<string, string> = {};
+  let customerId = '';
+  let supplierId = '';
+  let productId = '';
+  let billNo = '';
+  const SUP = gstin('07', 'AAACV7777Q');
+
+  test('setup', async () => {
+    const s = await login('9810000030');
+    const b = await request(app).post('/api/businesses').set('Authorization', `Bearer ${s.accessToken}`).send({ name: 'Phase Two Pvt Ltd', gstin: gstin('07', 'AAACP2222P'), stateCode: '07' });
+    h = { Authorization: `Bearer ${s.accessToken}`, 'X-Business-Id': b.body._id };
+    customerId = (await request(app).post('/api/parties').set(h).send({ type: 'CUSTOMER', name: 'Monthly AMC Client', gstin: BUYER_UP, stateCode: '09' })).body._id;
+    supplierId = (await request(app).post('/api/parties').set(h).send({ type: 'SUPPLIER', name: 'Verified Supplier', gstin: SUP, stateCode: '07' })).body._id;
+    productId = (await request(app).post('/api/products').set(h).send({ name: 'AMC Service', hsnCode: '998719', taxRate: 18, sellingPrice: 5000, isService: true })).body._id;
+    const stock = (await request(app).post('/api/products').set(h).send({ name: 'Copper Wire', hsnCode: '8544', taxRate: 18, purchasePrice: 100, sellingPrice: 150 })).body._id;
+    const bill = await request(app).post('/api/documents').set(h).send({ docType: 'PURCHASE_BILL', partyId: supplierId, reference: 'VS/0042', items: [{ productId: stock, quantity: 10 }] });
+    billNo = bill.body.reference;
+    await request(app).post('/api/payments').set(h).send({ type: 'PAYMENT_OUT', partyId: supplierId, billId: bill.body._id, amount: 500, mode: 'CASH' });
+  });
+
+  test('recurring invoice is raised once per period', async () => {
+    const today = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
+    const r = await request(app).post('/api/recurring').set(h).send({ name: 'AMC monthly', partyId: customerId, items: [{ productId, quantity: 1 }], frequency: 'MONTHLY', startOn: today });
+    assert.equal(r.status, 201, JSON.stringify(r.body));
+    const run = await request(app).post('/api/recurring/run').set(h);
+    assert.equal(run.body.length, 1, JSON.stringify(run.body));
+    assert.match(run.body[0].invoice, /^INV\//);
+    const again = await request(app).post('/api/recurring/run').set(h);
+    assert.equal(again.body.length, 0, 'must not bill the same period twice');
+    const list = (await request(app).get('/api/recurring').set(h)).body;
+    assert.equal(list[0].runs, 1);
+    assert.ok(list[0].nextRunOn > today);
+  });
+
+  test('cash book and statements', async () => {
+    await request(app).patch('/api/books/opening').set(h).send({ cash: 10000, bank: 50000, asOn: '2026-04-01' });
+    const cash = await request(app).get('/api/books/cash?from=2026-04-01').set(h);
+    assert.equal(cash.status, 200, JSON.stringify(cash.body));
+    assert.equal(cash.body.opening, 10000);
+    assert.equal(cash.body.closing, 9500);
+    const st = await request(app).get('/api/books/statements').set(h);
+    assert.equal(st.status, 200, JSON.stringify(st.body));
+    assert.equal(st.body.balanceSheet.assets.stock, 1000);
+    const tb = st.body.trialBalance.rows;
+    const dr = tb.reduce((a: number, r: { dr: number }) => a + r.dr, 0);
+    const cr = tb.reduce((a: number, r: { cr: number }) => a + r.cr, 0);
+    assert.ok(Math.abs(dr - cr) < 0.01, 'trial balance must balance');
+  });
+
+  test('GSTR-2B reconciliation finds matched and missing invoices', async () => {
+    const now = new Date(Date.now() + 5.5 * 3600e3);
+    const rtnprd = String(now.getUTCMonth() + 1).padStart(2, '0') + now.getUTCFullYear();
+    const r = await request(app).post('/api/gstr2b/reconcile').set(h).send({
+      data: {
+        rtnprd,
+        docdata: {
+          b2b: [
+            { ctin: SUP, trdnm: 'Verified Supplier', inv: [{ inum: 'vs-42', dt: '01-11-2026', val: 1180, itcavl: 'Y', items: [{ rt: 18, txval: 1000, cgst: 90, sgst: 90 }] }] },
+            { ctin: gstin('27', 'AAACZ9999Z'), trdnm: 'Unknown Mumbai', inv: [{ inum: 'MUM/1', dt: '02-11-2026', val: 590, items: [{ igst: 90 }] }] }
+          ]
+        }
+      }
+    });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.equal(r.body.summary.matched, 1, `"vs-42" should match bill "${billNo}"`);
+    assert.equal(r.body.summary.missingInBooks, 1);
+  });
+
+  test('public invoice link works without login and hides internal data', async () => {
+    const inv = (await request(app).get('/api/invoices').set(h)).body.items[0];
+    const share = await request(app).post(`/api/invoices/${inv._id}/share`).set(h);
+    assert.equal(share.status, 200);
+    const pub = await request(app).get(`/api/public/invoices/${share.body.token}`);
+    assert.equal(pub.status, 200, JSON.stringify(pub.body));
+    assert.equal(pub.body.invoice.number, inv.number);
+    assert.equal(pub.body.invoice.createdBy, undefined);
+    assert.equal((await request(app).get('/api/public/invoices/not-a-real-token-123456789')).status, 404);
+  });
+
+  test('Tally XML export', async () => {
+    const r = await request(app).get('/api/tally/vouchers.xml').set(h);
+    assert.equal(r.status, 200);
+    assert.match(r.text, /<VOUCHER VCHTYPE="Sales"/);
+    assert.match(r.text, /<VOUCHER VCHTYPE="Purchase"/);
+    assert.match(r.text, /<VOUCHER VCHTYPE="Payment"/);
+  });
+
+  test('export under LUT is zero-rated with the Rule 46 endorsement', async () => {
+    const noLut = await request(app).post('/api/invoices').set(h).send({ walkIn: { name: 'Acme Inc, USA', stateCode: '96', address: 'NY' }, supplyType: 'EXPORT_WOPAY', items: [{ productId, quantity: 2 }] });
+    assert.equal(noLut.status, 400);
+    const r = await request(app)
+      .post('/api/invoices')
+      .set(h)
+      .send({ walkIn: { name: 'Acme Inc, USA', stateCode: '96', address: 'NY' }, supplyType: 'EXPORT_WOPAY', exportDetails: { lutNumber: 'AD070326000123X', currency: 'USD', exchangeRate: 83.5, portCode: 'INDEL4' }, items: [{ productId, quantity: 2 }] });
+    assert.equal(r.status, 201, JSON.stringify(r.body));
+    assert.equal(r.body.igstTotal, 0);
+    assert.equal(r.body.items[0].gstRate, 18);
+    assert.equal(r.body.placeOfSupply, '96');
+    assert.match(r.body.notes, /WITHOUT PAYMENT OF INTEGRATED TAX/);
+    assert.equal(r.body.exportDetails.foreignValue, 119.76);
+    const g = await request(app).get('/api/reports/gstr1/json').set(h);
+    assert.equal(g.body.exp[0].exp_typ, 'WOPAY');
+  });
+});

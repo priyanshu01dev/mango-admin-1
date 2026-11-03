@@ -5,6 +5,7 @@ import { DocType } from '../types/documents';
 import { PageHeader, SegmentedTabs } from './admin/ui';
 import { DocumentList } from './documents/DocumentList';
 import { FileStack } from 'lucide-react';
+import { RecurringInvoices } from './RecurringInvoices';
 
 const TABS: { id: DocType; label: string; description: string }[] = [
   { id: 'PROFORMA', label: 'Proforma', description: 'Advance / quotation-style invoice for payment before supply. Not a tax invoice, so no GST liability until converted.' },
@@ -16,9 +17,9 @@ const TABS: { id: DocType; label: string; description: string }[] = [
 export const SalesDocuments: React.FC = () => {
   const { activeBusiness } = useBilling();
   const { documents } = useDocuments();
-  const [tab, setTab] = useState<DocType>('PROFORMA');
+  const [tab, setTab] = useState<DocType | 'RECURRING'>('PROFORMA');
   const count = (t: DocType) => documents.filter(d => d.docType === t && d.businessId === activeBusiness.id && d.status !== 'CANCELLED').length;
-  const active = TABS.find(t => t.id === tab)!;
+  const active = TABS.find(t => t.id === tab);
 
   return (
     <div className="space-y-6 pb-12">
@@ -26,9 +27,9 @@ export const SalesDocuments: React.FC = () => {
         icon={FileStack}
         title="Sales documents"
         subtitle="Proforma invoices, sales orders, delivery challans and credit notes. All convertible, printable and shareable on WhatsApp."
-        actions={<SegmentedTabs value={tab} onChange={setTab} options={TABS.map(t => ({ id: t.id, label: t.label, count: count(t.id) }))} />}
+        actions={<SegmentedTabs value={tab} onChange={setTab} options={[...TABS.map(t => ({ id: t.id as DocType | 'RECURRING', label: t.label, count: count(t.id) })), { id: 'RECURRING' as const, label: 'Recurring' }]} />}
       />
-      <DocumentList key={tab} docType={tab} description={active.description} />
+      {tab === 'RECURRING' ? <RecurringInvoices /> : <DocumentList key={tab} docType={tab} description={active!.description} />}
     </div>
   );
 };

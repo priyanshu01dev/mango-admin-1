@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useBilling } from '../context/BillingContext';
 import { useDocuments } from '../context/DocumentsContext';
 import { get, errMsg } from '../api/client';
+import { Gstr2bRecon } from './Gstr2bRecon';
 import { formatINR, TRANSLATIONS } from '../utils/formatters';
 import { FileCheck2, Download, Table, FileSpreadsheet, ShieldCheck, Printer, CheckCircle2 } from 'lucide-react';
 
@@ -16,7 +17,7 @@ export const GSTReports: React.FC = () => {
   });
   const t = TRANSLATIONS[language];
 
-  const [activeReportTab, setActiveReportTab] = useState<'GSTR1' | 'GSTR3B' | 'HSN'>('GSTR1');
+  const [activeReportTab, setActiveReportTab] = useState<'GSTR1' | 'GSTR3B' | 'HSN' | 'GSTR2B'>('GSTR1');
 
   const { documents, expenses } = useDocuments();
   // cancelled invoices stay in the register but carry no tax liability
@@ -164,6 +165,14 @@ export const GSTReports: React.FC = () => {
         >
           HSN Wise Summary Table
         </button>
+          <button
+            onClick={() => setActiveReportTab('GSTR2B')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              activeReportTab === 'GSTR2B' ? 'bg-mango-500 text-white shadow-sm' : 'text-stone-500 hover:text-ink'
+            }`}
+          >
+            GSTR-2B Reconciliation
+          </button>
       </div>
 
       {/* TAB 1: GSTR-1 */}
@@ -329,6 +338,8 @@ export const GSTReports: React.FC = () => {
           </div>
         </div>
       )}
+
+      {activeReportTab === 'GSTR2B' && <Gstr2bRecon />}
 
       {/* TAB 3: HSN SUMMARY TABLE */}
       {activeReportTab === 'HSN' && (

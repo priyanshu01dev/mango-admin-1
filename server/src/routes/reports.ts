@@ -281,11 +281,18 @@ reportsRouter.get(
     const taxedRows = (i: { items: Taxed[]; charges?: Taxed[] }) => [...i.items, ...(i.charges ?? [])];
 
     const b2bMap = new Map<string, unknown[]>();
+    const expMap = new Map<string, unknown[]>();
     const b2clMap = new Map<string, unknown[]>();
     const b2cs = new Map<string, { sply_ty: string; pos: string; typ: string; rt: number; txval: number; iamt: number; camt: number; samt: number; csamt: number }>();
     for (const i of invoices) {
       const inv = { inum: i.number, idt: dmy(i.date), val: r2(i.grandTotal), pos: i.placeOfSupply, rchrg: i.reverseCharge ? 'Y' : 'N', inv_typ: 'R', itms: itemsByRate(taxedRows(i as never)) };
-      if (i.partyGstin) {
+      const st = (i as { supplyType?: string }).supplyType ?? 'REGULAR';
+      if (st.startsWith('EXPORT')) {
+        const ex = (i as { exportDetails?: { portCode?: string; shippingBillNo?: string; shippingBillDate?: string } }).exportDetails ?? {};
+        const key = st === 'EXPORT_WPAY' ? 'WPAY' : 'WOPAY';
+        expMap.set(key, [...(expMap.get(key) ?? []), { inum: i.number, idt: dmy(i.date), val: r2(i.grandTotal), sbpcode: ex.portCode || undefined, sbnum: ex.shippingBillNo || undefined, sbdt: ex.shippingBillDate ? dmy(ex.shippingBillDate) : undefined, itms: itemsByRate(taxedRows(i as never)).map(x => ({ txval: x.itm_det.txval, rt: x.itm_det.rt, iamt: x.itm_det.iamt, csamt: 0 })) }]);
+      } else if (i.partyGstin) {
+        if (st.startsWith('SEZ') || st === 'DEEMED_EXPORT') inv.inv_typ = st === 'SEZ_WPAY' ? 'SEWP' : st === 'SEZ_WOPAY' ? 'SEWOP' : 'DE';
         b2bMap.set(i.partyGstin, [...(b2bMap.get(i.partyGstin) ?? []), inv]);
       } else if (i.isInterState && i.grandTotal > rules.b2clInvoiceThreshold) {
         const { rchrg: _r, inv_typ: _t, ...b2clInv } = inv;
@@ -331,6 +338,7 @@ reportsRouter.get(
       b2cl: [...b2clMap.entries()].map(([pos, inv]) => ({ pos, inv })),
       b2cs: [...b2cs.values()],
       cdnr: [...cdnrMap.entries()].map(([ctin, nt]) => ({ ctin, nt })),
+      exp: [...expMap.entries()].map(([exp_typ, inv]) => ({ exp_typ, inv })),
       hsn: { data: [...hsn.values()] }
     };
     res.setHeader('Content-Disposition', `attachment; filename="GSTR1_${seller.gstin || 'NA'}_${json.fp}.json"`);

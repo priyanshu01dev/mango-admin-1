@@ -12,6 +12,8 @@ import { txRouter } from './routes/transactions';
 import { reportsRouter } from './routes/reports';
 import { supportRouter } from './routes/support';
 import { adminRouter } from './routes/admin';
+import { phase2Router } from './routes/phase2';
+import { publicRouter } from './routes/public';
 
 export function createApp() {
   const app = express();
@@ -28,6 +30,7 @@ export function createApp() {
   });
 
   app.use('/api/auth', authRouter);
+  app.use('/api/public', publicRouter); // no login: customer-facing invoice links
   app.use('/api/businesses', requireAuth, businessRouter);
   app.use('/api/admin', requireAuth, adminRouter);
   // business-scoped API: needs a login and an X-Business-Id the user is a member of (checked once)
@@ -36,6 +39,7 @@ export function createApp() {
   scoped.use(supportRouter);
   scoped.use(mastersRouter);
   scoped.use(txRouter);
+  scoped.use(phase2Router);
   scoped.use('/reports', reportsRouter);
   app.use('/api', scoped);
 

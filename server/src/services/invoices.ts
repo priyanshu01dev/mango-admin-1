@@ -21,6 +21,8 @@ export interface CreateInvoiceInput {
   reverseCharge?: boolean;
   notes?: string;
   sourceDoc?: string;
+  supplyType?: 'REGULAR' | 'EXPORT_WPAY' | 'EXPORT_WOPAY' | 'SEZ_WPAY' | 'SEZ_WOPAY' | 'DEEMED_EXPORT';
+  exportDetails?: { currency?: string; exchangeRate?: number; portCode?: string; shippingBillNo?: string; shippingBillDate?: string; lutNumber?: string };
   billDiscount?: number;
   charges?: { label: string; amount: number; gstRate?: number }[];
   tcsRate?: number;
@@ -56,7 +58,20 @@ export async function createInvoice(req: Request, input: CreateInvoiceInput, out
 
     const date = input.date ?? todayIST();
     if (date > todayIST()) throw badRequest('Invoice date cannot be in the future');
-    const isInterState = buyer.stateCode !== business.stateCode;
+    const supplyType = input.supplyType ?? 'REGULAR';
+    const isExport = supplyType.startsWith('EXPORT');
+    const isSez = supplyType.startsWith('SEZ');
+    const zeroRatedLut = supplyType.endsWith('WOPAY');
+    if (supplyType !== 'REGULAR' && business.gstType !== 'REGULAR') throw badRequest('Only regular GST taxpayers can make zero-rated supplies');
+    if (isExport) buyer.stateCode = '96';
+    if (isSez && !buyer.gstin) throw badRequest('SEZ supplies need the SEZ unit\'s GSTIN');
+    const lut = input.exportDetails?.lutNumber || business.lutNumber || '';
+    if (zeroRatedLut && !lut) throw badRequest('Add your LUT number (Letter of Undertaking) for supplies without payment of IGST');
+    if (isExport && input.exportDetails?.currency && input.exportDetails.currency !== 'INR' && !(input.exportDetails.exchangeRate! > 0)) {
+      throw badRequest('Exchange rate is required for foreign-currency invoices');
+    }
+    // exports and SEZ supplies are inter-state (IGST Act s.7(5)) whatever the address
+    const isInterState = isExport || isSez || buyer.stateCode !== business.stateCode;
     // composition / unregistered sellers issue a Bill of Supply and cannot charge GST
     const billOfSupply = business.gstType !== 'REGULAR';
     const isB2B = !!buyer.gstin;
@@ -72,12 +87,24 @@ export async function createInvoice(req: Request, input: CreateInvoiceInput, out
     if (billOfSupply) lines.forEach(l => Object.assign(l, { gstRate: 0, cgstAmount: 0, sgstAmount: 0, igstAmount: 0, totalAmount: l.taxableAmount }));
     // charges (freight, packing…) are taxed at the rate of the main supply unless given
     const principalRate = billOfSupply ? 0 : Math.max(...lines.map(l => l.gstRate));
-    const { lines: finalLines, charges, ...t } = invoiceTotals(lines, isInterState, {
+    const extras = {
       billDiscount: input.billDiscount,
       charges: (input.charges ?? []).map(c => ({ label: c.label, amount: c.amount, gstRate: billOfSupply ? 0 : c.gstRate ?? principalRate })),
       tcsRate: input.tcsRate,
       roundOff: business.invoiceSettings?.roundOff ?? true
-    });
+    };
+    // under LUT / bond the supply is zero-rated: the rate is still reported but no IGST is charged
+    const computed = zeroRatedLut
+      ? (() => {
+          const z = invoiceTotals(lines.map(l => ({ ...l, gstRate: 0 })), true, { ...extras, charges: extras.charges.map(c => ({ ...c, gstRate: 0 })) });
+          return { ...z, lines: z.lines.map((l, i) => ({ ...l, gstRate: lines[i].gstRate })) };
+        })()
+      : invoiceTotals(lines, isInterState, extras);
+    const { lines: finalLines, charges, ...t } = computed;
+    const endorsement =
+      supplyType === 'REGULAR' || supplyType === 'DEEMED_EXPORT'
+        ? ''
+        : `${isExport ? 'SUPPLY MEANT FOR EXPORT' : 'SUPPLY MEANT FOR SEZ UNIT OR SEZ DEVELOPER FOR AUTHORISED OPERATIONS'} ${zeroRatedLut ? `UNDER LETTER OF UNDERTAKING ${lut} WITHOUT PAYMENT OF INTEGRATED TAX` : 'ON PAYMENT OF INTEGRATED TAX'}`;
 
     // Rule 46: unregistered buyer above threshold needs full address
     if (!isB2B && t.taxableTotal >= rules.b2cLargeThreshold && !buyer.address.trim()) {
@@ -113,6 +140,16 @@ export async function createInvoice(req: Request, input: CreateInvoiceInput, out
           partyAddress: buyer.address,
           partyStateCode: buyer.stateCode,
           placeOfSupply: buyer.stateCode,
+          supplyType,
+          exportDetails: {
+            currency: input.exportDetails?.currency ?? (isExport ? 'INR' : ''),
+            exchangeRate: input.exportDetails?.exchangeRate ?? 0,
+            foreignValue: input.exportDetails?.exchangeRate ? r2(t.grandTotal / input.exportDetails.exchangeRate) : 0,
+            portCode: input.exportDetails?.portCode ?? '',
+            shippingBillNo: input.exportDetails?.shippingBillNo ?? '',
+            shippingBillDate: input.exportDetails?.shippingBillDate ?? '',
+            lutNumber: zeroRatedLut ? lut : ''
+          },
           isInterState,
           reverseCharge: !!input.reverseCharge,
           items: finalLines,
@@ -125,7 +162,7 @@ export async function createInvoice(req: Request, input: CreateInvoiceInput, out
           amountPaid: paid,
           balanceDue: r2(t.grandTotal - paid),
           status: paid >= t.grandTotal ? 'PAID' : paid > 0 ? 'PARTIALLY_PAID' : 'UNPAID',
-          notes: input.notes ?? business.invoiceSettings?.defaultNotes ?? '',
+          notes: [endorsement, input.notes ?? business.invoiceSettings?.defaultNotes ?? ''].filter(Boolean).join(' | '),
           sourceDoc: input.sourceDoc ?? '',
           createdBy: req.user!._id
         }

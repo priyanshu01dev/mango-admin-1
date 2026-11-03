@@ -73,6 +73,10 @@ txRouter.post(
         paymentReference: z.string().max(60).optional(),
         reverseCharge: z.boolean().optional(),
         notes: z.string().max(1000).optional(),
+        supplyType: z.enum(['REGULAR', 'EXPORT_WPAY', 'EXPORT_WOPAY', 'SEZ_WPAY', 'SEZ_WOPAY', 'DEEMED_EXPORT']).optional(),
+        exportDetails: z
+          .object({ currency: z.string().length(3).optional(), exchangeRate: z.number().positive().optional(), portCode: z.string().max(6).optional(), shippingBillNo: z.string().max(20).optional(), shippingBillDate: date.or(z.literal('')).optional(), lutNumber: z.string().max(30).optional() })
+          .optional(),
         billDiscount: z.number().min(0).optional(),
         charges: z.array(z.object({ label: z.string().min(1).max(40), amount: z.number().min(0), gstRate: z.number().min(0).max(28).optional() })).max(5).optional(),
         tcsRate: z.number().min(0).max(5).optional(),

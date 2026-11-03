@@ -83,6 +83,8 @@ export interface Invoice {
   eInvoiceStatus?: 'NOT_GENERATED' | 'GENERATED' | 'FAILED';
   irnNumber?: string;
   irnMock?: boolean; // generated in GSP mock mode: NOT a valid IRN
+  supplyType?: 'REGULAR' | 'EXPORT_WPAY' | 'EXPORT_WOPAY' | 'SEZ_WPAY' | 'SEZ_WOPAY' | 'DEEMED_EXPORT';
+  exportDetails?: { currency?: string; exchangeRate?: number; foreignValue?: number; portCode?: string; shippingBillNo?: string; shippingBillDate?: string; lutNumber?: string };
   billDiscount?: number;
   charges?: { label: string; amount: number; gstRate: number; taxableAmount?: number; cgstAmount?: number; sgstAmount?: number; igstAmount?: number; totalAmount?: number }[];
   chargesTotal?: number;

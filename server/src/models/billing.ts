@@ -122,6 +122,17 @@ const invoiceSchema = new Schema(
     businessId: { type: ObjectId, ref: 'Business', required: true },
     number: { type: String, required: true },
     kind: { type: String, enum: ['TAX_INVOICE', 'BILL_OF_SUPPLY'], default: 'TAX_INVOICE' },
+    supplyType: { type: String, enum: ['REGULAR', 'EXPORT_WPAY', 'EXPORT_WOPAY', 'SEZ_WPAY', 'SEZ_WOPAY', 'DEEMED_EXPORT'], default: 'REGULAR' },
+    exportDetails: {
+      currency: { type: String, default: '' },
+      exchangeRate: { type: Number, default: 0 },
+      foreignValue: { type: Number, default: 0 },
+      portCode: { type: String, default: '' },
+      shippingBillNo: { type: String, default: '' },
+      shippingBillDate: { type: String, default: '' },
+      lutNumber: { type: String, default: '' }
+    },
+    publicToken: { type: String, index: { unique: true, sparse: true } },
     date: { type: String, required: true },
     dueDate: String,
     ...partySnapshot,

@@ -21,8 +21,10 @@ import {
   FileDown,
   Building2,
   AlertCircle,
-  Copy
+  Copy,
+  Link2
 } from 'lucide-react';
+import { post, errMsg } from '../api/client';
 
 interface InvoicesProps {
   onSelectInvoiceForPrint: (inv: Invoice) => void;
@@ -102,6 +104,13 @@ export const Invoices: React.FC<InvoicesProps> = ({
   const [lrNumber, setLrNumber] = useState('');
   const [showExtras, setShowExtras] = useState(false);
   const [paymentTds, setPaymentTds] = useState(0);
+  // zero-rated supplies (spec §8.4 P1)
+  const [supplyType, setSupplyType] = useState<NonNullable<Invoice['supplyType']>>('REGULAR');
+  const [lutNumber, setLutNumber] = useState('');
+  const [currency, setCurrency] = useState('INR');
+  const [exchangeRate, setExchangeRate] = useState(0);
+  const [portCode, setPortCode] = useState('');
+  const [shippingBillNo, setShippingBillNo] = useState('');
 
   // Dynamic invoice items
   const [formItems, setFormItems] = useState<InvoiceItem[]>([
@@ -123,7 +132,8 @@ export const Invoices: React.FC<InvoicesProps> = ({
     }
   ]);
 
-  const isInterState = customerStateCode !== activeBusiness.stateCode;
+  // exports and SEZ supplies are always inter-state (IGST)
+  const isInterState = supplyType !== 'REGULAR' && supplyType !== 'DEEMED_EXPORT' ? true : customerStateCode !== activeBusiness.stateCode;
 
   // Filter invoices for current business
   const currentInvoices = invoices.filter(inv => {
@@ -200,7 +210,10 @@ export const Invoices: React.FC<InvoicesProps> = ({
     { label: 'Freight', amount: freight, gstRate: principalRate },
     { label: 'Packing', amount: packing, gstRate: principalRate }
   ].filter(c => c.amount > 0);
-  const totals = invoiceTotals(formItems, isInterState, { billDiscount, charges: formCharges, tcsRate });
+  const lutZeroRated = supplyType.endsWith('WOPAY');
+  const totals = lutZeroRated
+    ? invoiceTotals(formItems.map(i => ({ ...i, gstRate: 0 })), true, { billDiscount, charges: formCharges.map(c => ({ ...c, gstRate: 0 })), tcsRate })
+    : invoiceTotals(formItems, isInterState, { billDiscount, charges: formCharges, tcsRate });
   const { subTotal, totalDiscount, taxableTotal, cgstTotal, sgstTotal, igstTotal, totalGst, roundOff, tcsAmount, chargesTotal } = totals;
   const roundedGrandTotal = totals.grandTotal;
 
@@ -276,6 +289,8 @@ export const Invoices: React.FC<InvoicesProps> = ({
       notes,
       eInvoiceStatus: 'NOT_GENERATED',
       eWayBillStatus: 'NOT_GENERATED',
+      supplyType,
+      exportDetails: { lutNumber, currency, exchangeRate: exchangeRate || undefined, portCode, shippingBillNo },
       billDiscount,
       charges: formCharges,
       tcsRate,
@@ -509,6 +524,26 @@ export const Invoices: React.FC<InvoicesProps> = ({
                       title={t.shareWhatsapp}
                     >
                       <Share2 className="w-3.5 h-3.5" />
+                    </button>
+
+                    {/* Public link for the customer (spec §8.7 P1) */}
+                    <button
+                      onClick={async () => {
+                        try {
+                          const r = await post<{ path: string }>(`/api/invoices/${inv.id}/share`);
+                          const url = window.location.origin + r.path;
+                          await navigator.clipboard?.writeText(url).catch(() => undefined);
+                          const text = `Invoice ${inv.invoiceNumber} for ${formatINR(inv.grandTotal)} from ${activeBusiness.tradeName || activeBusiness.name}. View & pay: ${url}`;
+                          window.open(`https://wa.me/${inv.customerPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
+                          showToast('Invoice link copied');
+                        } catch (e) {
+                          showToast(errMsg(e));
+                        }
+                      }}
+                      className="p-1.5 rounded-lg bg-mango-50/60 hover:bg-mango-100 text-stone-500 hover:text-ink transition-colors"
+                      title="Share invoice link (view & pay online)"
+                    >
+                      <Link2 className="w-3.5 h-3.5" />
                     </button>
 
                     {/* Duplicate (spec §8.4) */}
@@ -884,6 +919,43 @@ export const Invoices: React.FC<InvoicesProps> = ({
                     </button>
                     {showExtras && (
                       <div className="grid grid-cols-2 gap-2 mt-2">
+                        <label className="text-[10px] text-stone-500 col-span-2">Type of supply
+                          <select value={supplyType} onChange={e => setSupplyType(e.target.value as NonNullable<Invoice['supplyType']>)} className="w-full bg-white border border-mango-200/70 rounded p-1.5 text-ink">
+                            <option value="REGULAR">Regular (domestic)</option>
+                            <option value="EXPORT_WPAY">Export with payment of IGST</option>
+                            <option value="EXPORT_WOPAY">Export under LUT (without IGST)</option>
+                            <option value="SEZ_WPAY">Supply to SEZ with IGST</option>
+                            <option value="SEZ_WOPAY">Supply to SEZ under LUT</option>
+                            <option value="DEEMED_EXPORT">Deemed export</option>
+                          </select>
+                        </label>
+                        {supplyType !== 'REGULAR' && (
+                          <>
+                            {lutZeroRated && (
+                              <label className="text-[10px] text-stone-500 col-span-2">LUT / bond number (required)
+                                <input value={lutNumber} onChange={e => setLutNumber(e.target.value.toUpperCase())} className="w-full bg-white border border-mango-200/70 rounded p-1.5 font-mono text-ink" placeholder="AD070326000123X" />
+                              </label>
+                            )}
+                            {supplyType.startsWith('EXPORT') && (
+                              <>
+                                <label className="text-[10px] text-stone-500">Currency
+                                  <select value={currency} onChange={e => setCurrency(e.target.value)} className="w-full bg-white border border-mango-200/70 rounded p-1.5 text-ink">
+                                    {['INR', 'USD', 'EUR', 'GBP', 'AED', 'SGD', 'AUD'].map(c => <option key={c}>{c}</option>)}
+                                  </select>
+                                </label>
+                                <label className="text-[10px] text-stone-500">₹ per 1 {currency}
+                                  <input type="number" min="0" step="0.0001" disabled={currency === 'INR'} value={exchangeRate} onChange={e => setExchangeRate(Math.max(0, parseFloat(e.target.value) || 0))} className="w-full bg-white border border-mango-200/70 rounded p-1.5 font-mono text-ink" />
+                                </label>
+                                <label className="text-[10px] text-stone-500">Port code
+                                  <input value={portCode} onChange={e => setPortCode(e.target.value.toUpperCase())} className="w-full bg-white border border-mango-200/70 rounded p-1.5 font-mono text-ink" placeholder="INDEL4" />
+                                </label>
+                                <label className="text-[10px] text-stone-500">Shipping bill no.
+                                  <input value={shippingBillNo} onChange={e => setShippingBillNo(e.target.value)} className="w-full bg-white border border-mango-200/70 rounded p-1.5 font-mono text-ink" />
+                                </label>
+                              </>
+                            )}
+                          </>
+                        )}
                         <label className="text-[10px] text-stone-500">Bill discount (₹, before GST)
                           <input type="number" min="0" value={billDiscount} onChange={e => setBillDiscount(Math.max(0, parseFloat(e.target.value) || 0))} className="w-full bg-white border border-mango-200/70 rounded p-1.5 font-mono text-ink" />
                         </label>

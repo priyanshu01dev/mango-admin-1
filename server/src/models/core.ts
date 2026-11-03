@@ -116,6 +116,8 @@ const businessSchema = new Schema(
     ownerId: { type: ObjectId, ref: 'User', required: true, index: true },
     firstInvoiceAt: Date,
     lastActiveAt: Date,
+    openingBalances: { cash: { type: Number, default: 0 }, bank: { type: Number, default: 0 }, capital: { type: Number, default: 0 }, asOn: { type: String, default: '' } },
+    lutNumber: { type: String, default: '' }, // Letter of Undertaking for zero-rated supplies
     deletionRequestedAt: Date,
     deletionRequestedBy: { type: ObjectId, ref: 'User' }
   },

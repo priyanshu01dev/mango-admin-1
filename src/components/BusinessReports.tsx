@@ -4,9 +4,10 @@ import { useDocuments } from '../context/DocumentsContext';
 import { formatINR, formatDate } from '../utils/formatters';
 import { downloadCsv, daysBetween, localDate } from '../utils/gst';
 import { Card, PageHeader, SegmentedTabs, StatTile, GhostButton, Badge, inputCls, EmptyState } from './admin/ui';
+import { BooksOfAccount } from './BooksOfAccount';
 import { BarChart3, Download, MessageCircle, TrendingUp, TrendingDown, Scale, Wallet } from 'lucide-react';
 
-type Tab = 'PNL' | 'DAYBOOK' | 'RECEIVABLES' | 'PAYABLES' | 'ITEMS';
+type Tab = 'PNL' | 'DAYBOOK' | 'RECEIVABLES' | 'PAYABLES' | 'ITEMS' | 'BOOKS';
 type Period = 'THIS_MONTH' | 'LAST_MONTH' | 'FY' | 'ALL';
 
 const todayIso = () => localDate();
@@ -189,7 +190,8 @@ export const BusinessReports: React.FC = () => {
               { id: 'DAYBOOK', label: 'Day book' },
               { id: 'RECEIVABLES', label: 'Receivables', count: receivables.length },
               { id: 'PAYABLES', label: 'Payables', count: payables.length },
-              { id: 'ITEMS', label: 'Item profit' }
+              { id: 'ITEMS', label: 'Item profit' },
+              { id: 'BOOKS', label: 'Books & statements' }
             ]}
           />
         }
@@ -275,6 +277,7 @@ export const BusinessReports: React.FC = () => {
         </Card>
       )}
 
+      {tab === 'BOOKS' && <BooksOfAccount />}
       {tab === 'RECEIVABLES' && <AgeingTable rows={receivables} kind="receivable" />}
       {tab === 'PAYABLES' && <AgeingTable rows={payables} kind="payable" />}
 

@@ -251,6 +251,8 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
             amountPaid: inv.amountPaid || undefined,
             paymentMode: inv.amountPaid ? 'UPI' : undefined,
             notes: inv.notes || undefined,
+            supplyType: inv.supplyType && inv.supplyType !== 'REGULAR' ? inv.supplyType : undefined,
+            exportDetails: inv.supplyType && inv.supplyType !== 'REGULAR' ? inv.exportDetails : undefined,
             billDiscount: inv.billDiscount || undefined,
             charges: inv.charges?.filter(c => c.amount > 0).map(c => ({ label: c.label, amount: c.amount, gstRate: c.gstRate })),
             tcsRate: inv.tcsRate || undefined,

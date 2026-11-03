@@ -183,6 +183,8 @@ export const toInvoice = (i: Raw): Invoice => ({
   eInvoiceStatus: i.eInvoice?.status === 'GENERATED' ? 'GENERATED' : i.eInvoice?.status === 'FAILED' ? 'FAILED' : 'NOT_GENERATED',
   irnNumber: i.eInvoice?.status === 'GENERATED' ? i.eInvoice.irn : undefined,
   irnMock: !!i.eInvoice?.mock,
+  supplyType: i.supplyType ?? 'REGULAR',
+  exportDetails: i.exportDetails,
   billDiscount: i.billDiscount ?? 0,
   charges: i.charges ?? [],
   chargesTotal: i.chargesTotal ?? 0,

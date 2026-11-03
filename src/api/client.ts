@@ -102,5 +102,26 @@ export const patch = <T>(path: string, body: unknown) => api<T>('PATCH', path, b
 export const put = <T>(path: string, body: unknown) => api<T>('PUT', path, body);
 export const del = <T>(path: string) => api<T>('DELETE', path);
 
+/** Downloads a non-JSON response (XML, CSV…) with the same auth headers and token refresh as api(). */
+export async function download(path: string, filename: string, retry = true): Promise<void> {
+  if (!accessToken && session.hasRefreshToken()) await refresh();
+  const headers: Record<string, string> = { 'X-Platform': 'Web' };
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  const biz = session.businessId();
+  if (biz) headers['X-Business-Id'] = biz;
+  const res = await fetch(`${BASE}${path}`, { headers });
+  if (res.status === 401 && retry && (await refresh())) return download(path, filename, false);
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, data?.error?.message ?? `Download failed (${res.status})`, data?.error?.code);
+  }
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 /** Error → message for a toast. */
 export const errMsg = (e: unknown) => (e instanceof ApiError ? e.display : e instanceof Error ? e.message : 'Something went wrong');
