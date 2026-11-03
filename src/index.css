@@ -1,8 +1,55 @@
 @import "tailwindcss";
 
+/*
+ * Mango Invoice brand theme — taken from the app logo:
+ *  cream paper background, ripe-mango orange, leaf green, "First Wave" blue, warm ink text.
+ */
+@theme {
+  --color-cream: #fdf6ee;
+  --color-ink: #2a1f17;
+
+  --color-mango-50: #fff7ed;
+  --color-mango-100: #ffebd3;
+  --color-mango-200: #ffd3a6;
+  --color-mango-300: #ffb56e;
+  --color-mango-400: #ff963d;
+  --color-mango-500: #f7781b;
+  --color-mango-600: #e25e0e;
+  --color-mango-700: #bb460c;
+  --color-mango-800: #943811;
+  --color-mango-900: #782f12;
+
+  --color-leaf-50: #f0f9ec;
+  --color-leaf-100: #dcf1d3;
+  --color-leaf-500: #3e9b2f;
+  --color-leaf-600: #2f7f23;
+  --color-leaf-700: #26661d;
+
+  --color-wave-50: #eef4fb;
+  --color-wave-500: #1a5ba6;
+  --color-wave-600: #154d8f;
+  --color-wave-700: #103d73;
+}
+
 @layer base {
   body {
     font-family: 'Plus Jakarta Sans', 'Noto Sans Devanagari', system-ui, -apple-system, sans-serif;
+    background-color: var(--color-cream);
+    color: var(--color-ink);
+  }
+
+  /* Form controls default to the warm light surface */
+  input,
+  select,
+  textarea {
+    color: var(--color-ink);
+  }
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: none;
+    border-color: var(--color-mango-400);
+    box-shadow: 0 0 0 3px rgb(247 120 27 / 0.15);
   }
 }
 
@@ -23,18 +70,26 @@
   }
 }
 
-/* Custom slick scrollbars */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.toast-in {
+  animation: toast-in 0.25s ease-out;
+}
+
+/* Warm scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgb(255 235 211 / 0.5);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.4);
+  background: rgb(247 120 27 / 0.35);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.8);
+  background: rgb(247 120 27 / 0.6);
 }

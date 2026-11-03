@@ -131,7 +131,7 @@ export function numberToWordsINR(amount: number): string {
 // Translations dictionary for bilingual Hindi & English UI
 export const TRANSLATIONS = {
   en: {
-    appName: 'GimBooks Pro',
+    appName: 'Mango Invoice',
     tagline: 'GST Billing, Invoicing & Admin Suite',
     dashboard: 'Dashboard',
     invoices: 'Invoices & Billing',
@@ -182,7 +182,7 @@ export const TRANSLATIONS = {
     grandTotal: 'Grand Total'
   },
   hi: {
-    appName: 'गिमबुक्स प्रो',
+    appName: 'मैंगो इनवॉइस',
     tagline: 'जीएसटी बिलिंग, इनवॉइसिंग व एडमिन सूट',
     dashboard: 'डैशबोर्ड (Overview)',
     invoices: 'बिल व इनवॉइस (Invoices)',

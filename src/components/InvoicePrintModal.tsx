@@ -23,35 +23,35 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoice, o
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-2 sm:p-4 overflow-y-auto no-print">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/50 p-2 sm:p-4 overflow-y-auto no-print">
       <div className="relative w-full max-w-4xl bg-white text-slate-900 rounded-xl shadow-2xl overflow-hidden my-auto max-h-[96vh] flex flex-col">
         {/* Top Action Bar (hidden on print) */}
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white border-b border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-mango-500 via-orange-500 to-mango-600 text-white border-b border-mango-600">
           <div className="flex items-center space-x-3">
-            <span className="bg-emerald-500/20 text-emerald-400 font-bold px-2.5 py-1 rounded text-xs uppercase tracking-wider border border-emerald-500/30">
+            <span className="bg-white/20 text-white font-bold px-2.5 py-1 rounded text-xs uppercase tracking-wider border border-white/30">
               Tax Invoice Preview (GST Rule 46)
             </span>
-            <span className="text-slate-300 text-sm font-medium">{invoice.invoiceNumber}</span>
+            <span className="text-white/90 text-sm font-medium">{invoice.invoiceNumber}</span>
           </div>
 
           <div className="flex items-center space-x-2">
             <button
               onClick={handleWhatsApp}
-              className="flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition-colors"
+              className="flex items-center space-x-1.5 px-3 py-1.5 bg-leaf-600 hover:bg-leaf-500 text-white rounded-lg text-xs font-semibold transition-colors"
             >
               <Share2 className="w-3.5 h-3.5" />
               <span>WhatsApp</span>
             </button>
             <button
               onClick={handlePrint}
-              className="flex items-center space-x-1.5 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow transition-colors"
+              className="flex items-center space-x-1.5 px-4 py-1.5 bg-wave-500 hover:bg-wave-600 text-white rounded-lg text-xs font-semibold shadow transition-colors"
             >
               <Printer className="w-4 h-4" />
               <span>Print / Save as PDF</span>
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+              className="p-1.5 text-white/80 hover:text-white hover:bg-white/15 rounded-lg transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -62,17 +62,20 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoice, o
         <div className="p-8 overflow-y-auto bg-white font-sans text-xs leading-relaxed text-slate-800" id="tax-invoice-printable">
           {/* Header Title & IRN / E-Way badge if available */}
           <div className="border border-slate-300 p-4 rounded-t-lg bg-slate-50/70 mb-0 flex justify-between items-start">
-            <div>
-              <span className="text-xl font-extrabold tracking-tight text-slate-900 uppercase">
-                {activeBusiness.tradeName || activeBusiness.name}
-              </span>
-              <p className="text-slate-600 font-medium text-[11px] mt-0.5">{activeBusiness.address}, {activeBusiness.city}, {activeBusiness.state} - {activeBusiness.pincode}</p>
-              <p className="text-slate-600 font-medium text-[11px]">
-                <strong className="text-slate-800">GSTIN:</strong> <span className="font-mono font-bold text-slate-900">{activeBusiness.gstin}</span> | <strong className="text-slate-800">PAN:</strong> {activeBusiness.pan} | <strong className="text-slate-800">Phone:</strong> {activeBusiness.phone}
-              </p>
-              <p className="text-slate-600 font-medium text-[11px]">
-                <strong className="text-slate-800">State:</strong> {activeBusiness.state} (State Code: <span className="font-mono font-bold">{activeBusiness.stateCode}</span>)
-              </p>
+            <div className="flex items-start space-x-3">
+              <img src="/logo.jpeg" alt="Logo" className="w-12 h-12 object-cover rounded-lg border border-slate-300 shrink-0" />
+              <div>
+                <span className="text-xl font-extrabold tracking-tight text-slate-900 uppercase">
+                  {activeBusiness.tradeName || activeBusiness.name}
+                </span>
+                <p className="text-slate-600 font-medium text-[11px] mt-0.5">{activeBusiness.address}, {activeBusiness.city}, {activeBusiness.state} - {activeBusiness.pincode}</p>
+                <p className="text-slate-600 font-medium text-[11px]">
+                  <strong className="text-slate-800">GSTIN:</strong> <span className="font-mono font-bold text-slate-900">{activeBusiness.gstin}</span> | <strong className="text-slate-800">PAN:</strong> {activeBusiness.pan} | <strong className="text-slate-800">Phone:</strong> {activeBusiness.phone}
+                </p>
+                <p className="text-slate-600 font-medium text-[11px]">
+                  <strong className="text-slate-800">State:</strong> {activeBusiness.state} (State Code: <span className="font-mono font-bold">{activeBusiness.stateCode}</span>)
+                </p>
+              </div>
             </div>
 
             <div className="text-right">
@@ -339,7 +342,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoice, o
 
           {/* Footer Computer Generated note */}
           <div className="text-center text-[10px] text-slate-500 mt-4">
-            This is a Computer Generated GST Tax Invoice created via GimBooks Pro. Certified under GST Act 2017.
+            This is a Computer Generated GST Tax Invoice created via Mango Invoice (Powered by First Wave). Certified under GST Act 2017.
           </div>
         </div>
       </div>

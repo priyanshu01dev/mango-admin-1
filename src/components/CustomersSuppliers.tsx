@@ -72,37 +72,37 @@ export const CustomersSuppliers: React.FC = () => {
     <div className="space-y-6">
       {/* Top Banner & Balance Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between">
+        <div className="bg-white border border-mango-100 p-5 rounded-2xl flex items-center justify-between">
           <div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase">Total Receivables (Customers)</span>
-            <div className="text-2xl font-black text-rose-400 mt-1">{formatINR(totalReceivables)}</div>
-            <p className="text-[11px] text-slate-400 mt-0.5">Amount to collect from buyers</p>
+            <span className="text-[11px] font-bold text-stone-500 uppercase">Total Receivables (Customers)</span>
+            <div className="text-2xl font-black text-rose-600 mt-1">{formatINR(totalReceivables)}</div>
+            <p className="text-[11px] text-stone-500 mt-0.5">Amount to collect from buyers</p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center">
             <ArrowDownLeft className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between">
+        <div className="bg-white border border-mango-100 p-5 rounded-2xl flex items-center justify-between">
           <div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase">Total Payables (Suppliers)</span>
-            <div className="text-2xl font-black text-amber-400 mt-1">{formatINR(totalPayables)}</div>
-            <p className="text-[11px] text-slate-400 mt-0.5">Amount to pay for stock purchases</p>
+            <span className="text-[11px] font-bold text-stone-500 uppercase">Total Payables (Suppliers)</span>
+            <div className="text-2xl font-black text-mango-600 mt-1">{formatINR(totalPayables)}</div>
+            <p className="text-[11px] text-stone-500 mt-0.5">Amount to pay for stock purchases</p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-mango-600 flex items-center justify-center">
             <ArrowUpRight className="w-5 h-5" />
           </div>
         </div>
       </div>
 
       {/* Action Bar & Tabs */}
-      <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="bg-white border border-mango-100 p-4 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center space-x-3">
-          <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
+          <div className="flex bg-mango-50/60 p-1 rounded-xl border border-mango-200/70">
             <button
               onClick={() => setActiveTab('CUSTOMER')}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                activeTab === 'CUSTOMER' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
+                activeTab === 'CUSTOMER' ? 'bg-mango-500 text-white shadow-sm' : 'text-stone-500 hover:text-ink'
               }`}
             >
               {language === 'hi' ? 'ग्राहक (Customers)' : 'Customers'}
@@ -110,7 +110,7 @@ export const CustomersSuppliers: React.FC = () => {
             <button
               onClick={() => setActiveTab('SUPPLIER')}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                activeTab === 'SUPPLIER' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
+                activeTab === 'SUPPLIER' ? 'bg-mango-500 text-white shadow-sm' : 'text-stone-500 hover:text-ink'
               }`}
             >
               {language === 'hi' ? 'सप्लायर (Suppliers)' : 'Suppliers'}
@@ -118,20 +118,20 @@ export const CustomersSuppliers: React.FC = () => {
           </div>
 
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-500" />
             <input
               type="text"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="Search by name, phone or GSTIN..."
-              className="bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-400 w-52 sm:w-64"
+              className="bg-mango-50/60 border border-mango-200/70 rounded-xl pl-9 pr-4 py-2 text-xs text-ink placeholder-stone-400 w-52 sm:w-64"
             />
           </div>
         </div>
 
         <button
           onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center space-x-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs shadow-md shadow-emerald-500/20"
+          className="flex items-center space-x-1.5 bg-mango-500 hover:bg-mango-600 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow-md shadow-mango-500/25"
         >
           <PlusCircle className="w-4 h-4" />
           <span>+ Add {activeTab === 'CUSTOMER' ? 'Customer' : 'Supplier'}</span>
@@ -139,10 +139,10 @@ export const CustomersSuppliers: React.FC = () => {
       </div>
 
       {/* Parties Table */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white border border-mango-100 rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-800/80 text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-800">
+          <table className="w-full text-left text-xs text-stone-700">
+            <thead className="bg-mango-50/70 text-stone-500 uppercase font-semibold text-[10px] tracking-wider border-b border-mango-100">
               <tr>
                 <th className="p-3.5 pl-5">Party Name</th>
                 <th className="p-3.5">Contact</th>
@@ -153,40 +153,40 @@ export const CustomersSuppliers: React.FC = () => {
                 <th className="p-3.5 pr-5 text-right">Statement</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/80">
+            <tbody className="divide-y divide-mango-100">
               {filteredParties.map(party => (
-                <tr key={party.id} className="hover:bg-slate-800/40 transition-colors">
+                <tr key={party.id} className="hover:bg-mango-50/60 transition-colors">
                   <td className="p-3.5 pl-5">
-                    <div className="font-bold text-white text-xs">{party.name}</div>
+                    <div className="font-bold text-ink text-xs">{party.name}</div>
                     {party.contactPerson && (
-                      <div className="text-[10px] text-slate-400">Attn: {party.contactPerson}</div>
+                      <div className="text-[10px] text-stone-500">Attn: {party.contactPerson}</div>
                     )}
                   </td>
 
                   <td className="p-3.5">
-                    <div className="text-slate-200 font-mono">{party.phone}</div>
-                    {party.email && <div className="text-[10px] text-slate-400">{party.email}</div>}
+                    <div className="text-stone-800 font-mono">{party.phone}</div>
+                    {party.email && <div className="text-[10px] text-stone-500">{party.email}</div>}
                   </td>
 
                   <td className="p-3.5">
-                    <div className="font-mono text-emerald-400 font-semibold">{party.gstin || 'Consumer'}</div>
-                    <div className="text-[10px] text-slate-400">{party.state} ({party.stateCode})</div>
+                    <div className="font-mono text-leaf-600 font-semibold">{party.gstin || 'Consumer'}</div>
+                    <div className="text-[10px] text-stone-500">{party.state} ({party.stateCode})</div>
                   </td>
 
-                  <td className="p-3.5 text-slate-400 max-w-xs truncate">{party.billingAddress}</td>
+                  <td className="p-3.5 text-stone-500 max-w-xs truncate">{party.billingAddress}</td>
 
                   <td className="p-3.5 text-right font-mono font-bold text-sm">
                     {party.currentBalance > 0 ? (
-                      <span className="text-rose-400">{formatINR(party.currentBalance)}</span>
+                      <span className="text-rose-600">{formatINR(party.currentBalance)}</span>
                     ) : party.currentBalance < 0 ? (
-                      <span className="text-amber-400">{formatINR(Math.abs(party.currentBalance))}</span>
+                      <span className="text-mango-600">{formatINR(Math.abs(party.currentBalance))}</span>
                     ) : (
-                      <span className="text-emerald-400">₹0.00</span>
+                      <span className="text-leaf-600">₹0.00</span>
                     )}
                   </td>
 
                   <td className="p-3.5 text-center">
-                    <span className="bg-emerald-500/15 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+                    <span className="bg-emerald-500/15 text-leaf-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
                       {party.status}
                     </span>
                   </td>
@@ -194,7 +194,7 @@ export const CustomersSuppliers: React.FC = () => {
                   <td className="p-3.5 pr-5 text-right">
                     <button
                       onClick={() => setSelectedPartyForLedger(party)}
-                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+                      className="p-1.5 rounded-lg bg-mango-50/60 hover:bg-mango-100 text-stone-700 hover:text-ink transition-colors"
                       title="View Ledger Statement"
                     >
                       <FileText className="w-3.5 h-3.5" />
@@ -209,38 +209,38 @@ export const CustomersSuppliers: React.FC = () => {
 
       {/* LEDGER STATEMENT MODAL */}
       {selectedPartyForLedger && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="bg-slate-900 border border-slate-700 text-white rounded-2xl p-6 max-w-2xl w-full shadow-2xl space-y-4 text-xs">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4">
+          <div className="bg-white border border-mango-200/70 text-ink rounded-2xl p-6 max-w-2xl w-full shadow-2xl space-y-4 text-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-mango-100">
               <div>
-                <h3 className="font-bold text-sm text-white">Party Account Ledger: {selectedPartyForLedger.name}</h3>
-                <p className="text-[10px] text-slate-400">GSTIN: {selectedPartyForLedger.gstin || 'Unregistered'} • {selectedPartyForLedger.phone}</p>
+                <h3 className="font-bold text-sm text-ink">Party Account Ledger: {selectedPartyForLedger.name}</h3>
+                <p className="text-[10px] text-stone-500">GSTIN: {selectedPartyForLedger.gstin || 'Unregistered'} • {selectedPartyForLedger.phone}</p>
               </div>
-              <button onClick={() => setSelectedPartyForLedger(null)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setSelectedPartyForLedger(null)} className="text-stone-500 hover:text-ink">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 flex justify-between items-center">
+            <div className="bg-mango-50/50 p-4 rounded-xl border border-mango-200/70 flex justify-between items-center">
               <div>
-                <span className="text-slate-400">Current Outstanding Balance:</span>
-                <div className="text-xl font-bold font-mono text-rose-400">
+                <span className="text-stone-500">Current Outstanding Balance:</span>
+                <div className="text-xl font-bold font-mono text-rose-600">
                   {formatINR(selectedPartyForLedger.currentBalance)}
                 </div>
               </div>
               {selectedPartyForLedger.creditLimit && (
                 <div className="text-right">
-                  <span className="text-slate-400">Credit Limit:</span>
-                  <div className="font-mono text-slate-200">{formatINR(selectedPartyForLedger.creditLimit)}</div>
+                  <span className="text-stone-500">Credit Limit:</span>
+                  <div className="font-mono text-stone-800">{formatINR(selectedPartyForLedger.creditLimit)}</div>
                 </div>
               )}
             </div>
 
             <div className="space-y-2">
-              <span className="font-bold text-slate-300 uppercase text-[10px]">Associated Tax Invoices</span>
-              <div className="border border-slate-800 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+              <span className="font-bold text-stone-700 uppercase text-[10px]">Associated Tax Invoices</span>
+              <div className="border border-mango-100 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-800 text-slate-400 text-[10px]">
+                  <thead className="bg-mango-50/60 text-stone-500 text-[10px]">
                     <tr>
                       <th className="p-2">Invoice #</th>
                       <th className="p-2">Date</th>
@@ -249,16 +249,16 @@ export const CustomersSuppliers: React.FC = () => {
                       <th className="p-2 text-right">Balance</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800">
+                  <tbody className="divide-y divide-mango-100">
                     {invoices
                       .filter(i => i.customerId === selectedPartyForLedger.id || i.customerName === selectedPartyForLedger.name)
                       .map(inv => (
                         <tr key={inv.id}>
-                          <td className="p-2 font-mono text-emerald-400">{inv.invoiceNumber}</td>
-                          <td className="p-2 text-slate-400">{inv.invoiceDate}</td>
+                          <td className="p-2 font-mono text-leaf-600">{inv.invoiceNumber}</td>
+                          <td className="p-2 text-stone-500">{inv.invoiceDate}</td>
                           <td className="p-2 text-right font-mono">{formatINR(inv.grandTotal)}</td>
-                          <td className="p-2 text-right font-mono text-emerald-400">{formatINR(inv.amountPaid)}</td>
-                          <td className="p-2 text-right font-mono font-bold text-rose-400">{formatINR(inv.balanceDue)}</td>
+                          <td className="p-2 text-right font-mono text-leaf-600">{formatINR(inv.amountPaid)}</td>
+                          <td className="p-2 text-right font-mono font-bold text-rose-600">{formatINR(inv.balanceDue)}</td>
                         </tr>
                       ))}
                   </tbody>
@@ -266,10 +266,10 @@ export const CustomersSuppliers: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-end space-x-2 pt-3 border-t border-slate-800">
+            <div className="flex justify-end space-x-2 pt-3 border-t border-mango-100">
               <button
                 onClick={() => setSelectedPartyForLedger(null)}
-                className="px-4 py-1.5 bg-slate-800 text-slate-300 rounded-lg"
+                className="px-4 py-1.5 bg-mango-50/60 text-stone-700 rounded-lg"
               >
                 Close
               </button>
@@ -280,71 +280,71 @@ export const CustomersSuppliers: React.FC = () => {
 
       {/* ADD PARTY MODAL */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="bg-slate-900 border border-slate-700 text-white rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4 text-xs">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="font-bold text-sm text-white">Add New {activeTab === 'CUSTOMER' ? 'Customer' : 'Supplier'}</h3>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4">
+          <div className="bg-white border border-mango-200/70 text-ink rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4 text-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-mango-100">
+              <h3 className="font-bold text-sm text-ink">Add New {activeTab === 'CUSTOMER' ? 'Customer' : 'Supplier'}</h3>
+              <button onClick={() => setIsAddModalOpen(false)} className="text-stone-500 hover:text-ink">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleSaveParty} className="space-y-3">
               <div>
-                <label className="block text-[11px] text-slate-400 mb-1">Business / Individual Name</label>
+                <label className="block text-[11px] text-stone-500 mb-1">Business / Individual Name</label>
                 <input
                   type="text"
                   required
                   value={name}
                   onChange={e => setName(e.target.value)}
                   placeholder="e.g. Apex Infotech Solutions"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white"
+                  className="w-full bg-mango-50/60 border border-mango-200/70 rounded-lg p-2 text-ink"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">Phone Number</label>
+                  <label className="block text-[11px] text-stone-500 mb-1">Phone Number</label>
                   <input
                     type="text"
                     required
                     value={phone}
                     onChange={e => setPhone(e.target.value)}
                     placeholder="+91 98110 00000"
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white"
+                    className="w-full bg-mango-50/60 border border-mango-200/70 rounded-lg p-2 text-ink"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">Email (Optional)</label>
+                  <label className="block text-[11px] text-stone-500 mb-1">Email (Optional)</label>
                   <input
                     type="email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     placeholder="billing@company.com"
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white"
+                    className="w-full bg-mango-50/60 border border-mango-200/70 rounded-lg p-2 text-ink"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">GSTIN Number (Optional)</label>
+                  <label className="block text-[11px] text-stone-500 mb-1">GSTIN Number (Optional)</label>
                   <input
                     type="text"
                     value={gstin}
                     onChange={e => setGstin(e.target.value.toUpperCase())}
                     placeholder="07AAAAA0000A1Z5"
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 font-mono text-white"
+                    className="w-full bg-mango-50/60 border border-mango-200/70 rounded-lg p-2 font-mono text-ink"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">State & State Code</label>
+                  <label className="block text-[11px] text-stone-500 mb-1">State & State Code</label>
                   <select
                     value={stateCode}
                     onChange={e => setStateCode(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white"
+                    className="w-full bg-mango-50/60 border border-mango-200/70 rounded-lg p-2 text-ink"
                   >
                     {Object.entries(INDIAN_STATES).map(([c, s]) => (
                       <option key={c} value={c}>{c} - {s}</option>
@@ -354,27 +354,27 @@ export const CustomersSuppliers: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[11px] text-slate-400 mb-1">Billing Address</label>
+                <label className="block text-[11px] text-stone-500 mb-1">Billing Address</label>
                 <input
                   type="text"
                   value={address}
                   onChange={e => setAddress(e.target.value)}
                   placeholder="Street, City, Pincode"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white"
+                  className="w-full bg-mango-50/60 border border-mango-200/70 rounded-lg p-2 text-ink"
                 />
               </div>
 
-              <div className="flex justify-end space-x-2 pt-3 border-t border-slate-800">
+              <div className="flex justify-end space-x-2 pt-3 border-t border-mango-100">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300"
+                  className="px-3 py-1.5 rounded-lg bg-mango-50/60 text-stone-700"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold"
+                  className="px-4 py-1.5 rounded-lg bg-mango-500 hover:bg-mango-600 text-white font-bold"
                 >
                   Save Party
                 </button>

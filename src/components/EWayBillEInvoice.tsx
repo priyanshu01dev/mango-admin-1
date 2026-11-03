@@ -14,15 +14,15 @@ export const EWayBillEInvoice: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Banner */}
-      <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white border border-mango-100 p-5 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <h2 className="text-xl font-black text-white">{t.eWayEInvoice}</h2>
-            <span className="bg-emerald-500/10 text-emerald-400 text-xs px-2.5 py-0.5 rounded-full border border-emerald-500/20 font-bold">
+            <h2 className="text-xl font-black text-ink">{t.eWayEInvoice}</h2>
+            <span className="bg-emerald-500/10 text-leaf-600 text-xs px-2.5 py-0.5 rounded-full border border-emerald-500/20 font-bold">
               NIC Portal Connected
             </span>
           </div>
-          <p className="text-slate-400 text-xs mt-0.5">
+          <p className="text-stone-500 text-xs mt-0.5">
             {language === 'hi'
               ? 'राष्ट्रीय सूचना विज्ञान केंद्र (NIC) ई-वे बिल व 64-करैक्टर IRN ई-इनवॉइस जनरेटर'
               : 'National Informatics Centre (NIC) E-Way Bill and 64-character IRN e-Invoice engine'}
@@ -30,13 +30,13 @@ export const EWayBillEInvoice: React.FC = () => {
         </div>
 
         {/* Tab switch */}
-        <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
+        <div className="flex bg-mango-50/60 p-1 rounded-xl border border-mango-200/70">
           <button
             onClick={() => setActiveSubTab('EWAY')}
             className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
               activeSubTab === 'EWAY'
-                ? 'bg-emerald-500 text-slate-950 shadow'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-mango-500 text-white shadow-sm'
+                : 'text-stone-500 hover:text-ink'
             }`}
           >
             <Truck className="w-3.5 h-3.5" />
@@ -46,8 +46,8 @@ export const EWayBillEInvoice: React.FC = () => {
             onClick={() => setActiveSubTab('EINVOICE')}
             className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
               activeSubTab === 'EINVOICE'
-                ? 'bg-emerald-500 text-slate-950 shadow'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-mango-500 text-white shadow-sm'
+                : 'text-stone-500 hover:text-ink'
             }`}
           >
             <QrCode className="w-3.5 h-3.5" />
@@ -58,10 +58,10 @@ export const EWayBillEInvoice: React.FC = () => {
 
       {/* SubTab 1: E-Way Bills Table */}
       {activeSubTab === 'EWAY' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white border border-mango-100 rounded-2xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-800/80 text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-800">
+            <table className="w-full text-left text-xs text-stone-700">
+              <thead className="bg-mango-50/70 text-stone-500 uppercase font-semibold text-[10px] tracking-wider border-b border-mango-100">
                 <tr>
                   <th className="p-3.5 pl-5">EWB Number</th>
                   <th className="p-3.5">Invoice #</th>
@@ -73,32 +73,32 @@ export const EWayBillEInvoice: React.FC = () => {
                   <th className="p-3.5 pr-5 text-right">Slip</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80">
+              <tbody className="divide-y divide-mango-100">
                 {ewayBills.map(ewb => (
-                  <tr key={ewb.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="p-3.5 pl-5 font-mono font-bold text-emerald-400 text-sm">
+                  <tr key={ewb.id} className="hover:bg-mango-50/60 transition-colors">
+                    <td className="p-3.5 pl-5 font-mono font-bold text-leaf-600 text-sm">
                       {ewb.ewbNumber}
                     </td>
-                    <td className="p-3.5 font-mono font-bold text-white">{ewb.invoiceNumber}</td>
+                    <td className="p-3.5 font-mono font-bold text-ink">{ewb.invoiceNumber}</td>
                     <td className="p-3.5 font-mono text-[11px]">
-                      <div className="text-slate-200">From: {ewb.fromGstin}</div>
-                      <div className="text-slate-400">To: {ewb.toGstin}</div>
+                      <div className="text-stone-800">From: {ewb.fromGstin}</div>
+                      <div className="text-stone-500">To: {ewb.toGstin}</div>
                     </td>
                     <td className="p-3.5">
-                      <div className="font-semibold text-slate-200">{ewb.transporterName}</div>
-                      <div className="text-[10px] font-mono text-amber-400 font-bold">{ewb.vehicleNumber}</div>
+                      <div className="font-semibold text-stone-800">{ewb.transporterName}</div>
+                      <div className="text-[10px] font-mono text-mango-600 font-bold">{ewb.vehicleNumber}</div>
                     </td>
                     <td className="p-3.5">{ewb.approxDistanceKm} KM</td>
-                    <td className="p-3.5 font-mono text-slate-300">{ewb.validUpto}</td>
+                    <td className="p-3.5 font-mono text-stone-700">{ewb.validUpto}</td>
                     <td className="p-3.5 text-center">
-                      <span className="bg-emerald-500/15 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+                      <span className="bg-emerald-500/15 text-leaf-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
                         {ewb.status}
                       </span>
                     </td>
                     <td className="p-3.5 pr-5 text-right">
                       <button
                         onClick={() => setSelectedEwbForPrint(ewb)}
-                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+                        className="p-1.5 rounded-lg bg-mango-50/60 hover:bg-mango-100 text-stone-700 hover:text-ink transition-colors"
                         title="Print E-Way Bill Slip"
                       >
                         <Printer className="w-3.5 h-3.5" />
@@ -114,10 +114,10 @@ export const EWayBillEInvoice: React.FC = () => {
 
       {/* SubTab 2: E-Invoices Table */}
       {activeSubTab === 'EINVOICE' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white border border-mango-100 rounded-2xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-800/80 text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-800">
+            <table className="w-full text-left text-xs text-stone-700">
+              <thead className="bg-mango-50/70 text-stone-500 uppercase font-semibold text-[10px] tracking-wider border-b border-mango-100">
                 <tr>
                   <th className="p-3.5 pl-5">Invoice #</th>
                   <th className="p-3.5">IRN (Invoice Reference Number)</th>
@@ -127,21 +127,21 @@ export const EWayBillEInvoice: React.FC = () => {
                   <th className="p-3.5 text-center">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80">
+              <tbody className="divide-y divide-mango-100">
                 {eInvoices.map(einv => (
-                  <tr key={einv.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="p-3.5 pl-5 font-mono font-bold text-white">{einv.invoiceNumber}</td>
-                    <td className="p-3.5 font-mono text-[10px] text-teal-300 max-w-xs truncate" title={einv.irn}>
+                  <tr key={einv.id} className="hover:bg-mango-50/60 transition-colors">
+                    <td className="p-3.5 pl-5 font-mono font-bold text-ink">{einv.invoiceNumber}</td>
+                    <td className="p-3.5 font-mono text-[10px] text-teal-700 max-w-xs truncate" title={einv.irn}>
                       {einv.irn}
                     </td>
                     <td className="p-3.5 font-mono text-[11px]">
-                      <div className="font-bold text-slate-200">Ack: {einv.ackNo}</div>
-                      <div className="text-[10px] text-slate-400">{einv.ackDate}</div>
+                      <div className="font-bold text-stone-800">Ack: {einv.ackNo}</div>
+                      <div className="text-[10px] text-stone-500">{einv.ackDate}</div>
                     </td>
-                    <td className="p-3.5 font-mono text-slate-300">{einv.buyerGstin}</td>
-                    <td className="p-3.5 text-right font-bold text-white font-mono">{formatINR(einv.totalValue)}</td>
+                    <td className="p-3.5 font-mono text-stone-700">{einv.buyerGstin}</td>
+                    <td className="p-3.5 text-right font-bold text-ink font-mono">{formatINR(einv.totalValue)}</td>
                     <td className="p-3.5 text-center">
-                      <span className="bg-teal-500/15 text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-teal-500/30">
+                      <span className="bg-teal-500/15 text-teal-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-teal-500/30">
                         {einv.status} ✓
                       </span>
                     </td>
@@ -155,7 +155,7 @@ export const EWayBillEInvoice: React.FC = () => {
 
       {/* PRINTABLE E-WAY BILL SLIP MODAL */}
       {selectedEwbForPrint && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4">
           <div className="bg-white text-slate-900 rounded-2xl p-6 max-w-xl w-full shadow-2xl text-xs space-y-4">
             <div className="flex items-center justify-between border-b pb-3 border-slate-300">
               <div className="flex items-center space-x-2">
@@ -164,7 +164,7 @@ export const EWayBillEInvoice: React.FC = () => {
                   Government of India • e-Way Bill Slip
                 </span>
               </div>
-              <button onClick={() => setSelectedEwbForPrint(null)} className="text-slate-400 hover:text-slate-700">
+              <button onClick={() => setSelectedEwbForPrint(null)} className="text-stone-500 hover:text-slate-700">
                 <X className="w-4 h-4" />
               </button>
             </div>

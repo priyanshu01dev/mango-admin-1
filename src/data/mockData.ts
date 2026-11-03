@@ -247,6 +247,22 @@ export const INITIAL_PARTIES: Party[] = [
     openingBalance: 0,
     currentBalance: -65000, // Payable
     status: 'ACTIVE'
+  },
+  {
+    id: 'party-5',
+    businessId: 'biz-1',
+    type: 'SUPPLIER',
+    name: 'Luminous Power Technologies (Gujarat Depot)',
+    contactPerson: 'Kalpesh Shah',
+    phone: '+91 97250 44120',
+    email: 'depot.ahd@luminousindia.com',
+    gstin: '24AAACL3456M1Z8',
+    billingAddress: 'Plot 22, GIDC Vatva, Ahmedabad',
+    state: 'Gujarat',
+    stateCode: '24', // Inter-state supplier (IGST input)
+    openingBalance: 0,
+    currentBalance: -49088, // Payable (PB/26-27/0042)
+    status: 'ACTIVE'
   }
 ];
 

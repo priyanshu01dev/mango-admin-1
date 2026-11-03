@@ -37,9 +37,9 @@ export const AndroidApiExplorer: React.FC = () => {
   };
 
   const kotlinSampleCode = `// Android Studio - Kotlin Retrofit Interface
-// File: src/main/java/com/gimbooks/app/network/BillingApiService.kt
+// File: src/main/java/com/mongo/app/network/BillingApiService.kt
 
-package com.gimbooks.app.network
+package com.mongo.app.network
 
 import retrofit2.Response
 import retrofit2.http.*
@@ -147,23 +147,23 @@ module.exports = mongoose.model('Invoice', InvoiceSchema);`;
   return (
     <div className="space-y-6">
       {/* Top Banner & Architecture Blueprint */}
-      <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+      <div className="bg-white border border-mango-100 p-5 rounded-2xl shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-mango-100">
           <div>
             <div className="flex items-center space-x-2">
-              <Terminal className="w-5 h-5 text-indigo-400" />
-              <h2 className="text-xl font-black text-white">Android Billing App REST API & Backend Suite</h2>
+              <Terminal className="w-5 h-5 text-wave-600" />
+              <h2 className="text-xl font-black text-ink">Android Billing App REST API & Backend Suite</h2>
             </div>
-            <p className="text-slate-400 text-xs mt-0.5">
+            <p className="text-stone-500 text-xs mt-0.5">
               RESTful endpoints, real-time testing console, Kotlin Retrofit code for Android Studio, and MongoDB schemas.
             </p>
           </div>
 
-          <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
+          <div className="flex bg-mango-50/60 p-1 rounded-xl border border-mango-200/70">
             <button
               onClick={() => setActiveTab('SANDBOX')}
               className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                activeTab === 'SANDBOX' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
+                activeTab === 'SANDBOX' ? 'bg-mango-500 text-white shadow-sm' : 'text-stone-500 hover:text-ink'
               }`}
             >
               <Terminal className="w-3.5 h-3.5" />
@@ -172,7 +172,7 @@ module.exports = mongoose.model('Invoice', InvoiceSchema);`;
             <button
               onClick={() => setActiveTab('KOTLIN')}
               className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                activeTab === 'KOTLIN' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
+                activeTab === 'KOTLIN' ? 'bg-mango-500 text-white shadow-sm' : 'text-stone-500 hover:text-ink'
               }`}
             >
               <Smartphone className="w-3.5 h-3.5" />
@@ -181,7 +181,7 @@ module.exports = mongoose.model('Invoice', InvoiceSchema);`;
             <button
               onClick={() => setActiveTab('MONGO')}
               className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                activeTab === 'MONGO' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
+                activeTab === 'MONGO' ? 'bg-mango-500 text-white shadow-sm' : 'text-stone-500 hover:text-ink'
               }`}
             >
               <Database className="w-3.5 h-3.5" />
@@ -192,36 +192,36 @@ module.exports = mongoose.model('Invoice', InvoiceSchema);`;
 
         {/* 3-Tier Architecture Diagram */}
         <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="bg-slate-800/50 border border-slate-700/60 p-3 rounded-xl flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+          <div className="bg-mango-50/50 border border-mango-100 p-3 rounded-xl flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-leaf-600 flex items-center justify-center shrink-0">
               <Smartphone className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Frontend App</span>
-              <div className="font-bold text-white text-xs">Android Billing App</div>
-              <p className="text-[10px] text-slate-400">Kotlin, Retrofit, Jetpack Compose</p>
+              <span className="text-[10px] text-leaf-600 font-bold uppercase tracking-wider">Frontend App</span>
+              <div className="font-bold text-ink text-xs">Android Billing App</div>
+              <p className="text-[10px] text-stone-500">Kotlin, Retrofit, Jetpack Compose</p>
             </div>
           </div>
 
-          <div className="bg-slate-800/50 border border-slate-700/60 p-3 rounded-xl flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0">
+          <div className="bg-mango-50/50 border border-mango-100 p-3 rounded-xl flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-wave-600 flex items-center justify-center shrink-0">
               <Server className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">Backend API Server</span>
-              <div className="font-bold text-white text-xs">Node.js + Express</div>
-              <p className="text-[10px] text-slate-400">JWT Auth, GST Engine, E-Way Wrapper</p>
+              <span className="text-[10px] text-wave-600 font-bold uppercase tracking-wider">Backend API Server</span>
+              <div className="font-bold text-ink text-xs">Node.js + Express</div>
+              <p className="text-[10px] text-stone-500">JWT Auth, GST Engine, E-Way Wrapper</p>
             </div>
           </div>
 
-          <div className="bg-slate-800/50 border border-slate-700/60 p-3 rounded-xl flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center shrink-0">
+          <div className="bg-mango-50/50 border border-mango-100 p-3 rounded-xl flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-600 flex items-center justify-center shrink-0">
               <Database className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[10px] text-teal-400 font-bold uppercase tracking-wider">Database Layer</span>
-              <div className="font-bold text-white text-xs">MongoDB Database</div>
-              <p className="text-[10px] text-slate-400">Multi-tenant business collections</p>
+              <span className="text-[10px] text-teal-600 font-bold uppercase tracking-wider">Database Layer</span>
+              <div className="font-bold text-ink text-xs">MongoDB Database</div>
+              <p className="text-[10px] text-stone-500">Multi-tenant business collections</p>
             </div>
           </div>
         </div>
@@ -231,8 +231,8 @@ module.exports = mongoose.model('Invoice', InvoiceSchema);`;
       {activeTab === 'SANDBOX' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left: Endpoint List (4 cols) */}
-          <div className="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm space-y-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block px-2">
+          <div className="lg:col-span-4 bg-white border border-mango-100 rounded-2xl p-4 shadow-sm space-y-2">
+            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block px-2">
               Available REST Endpoints
             </span>
             <div className="space-y-1">
@@ -247,21 +247,21 @@ module.exports = mongoose.model('Invoice', InvoiceSchema);`;
                     }}
                     className={`w-full text-left p-3 rounded-xl text-xs transition-colors border ${
                       isSelected
-                        ? 'bg-emerald-500/10 border-emerald-500/40 text-white'
-                        : 'bg-slate-800/40 border-slate-800 text-slate-300 hover:bg-slate-800'
+                        ? 'bg-emerald-500/10 border-emerald-500/40 text-ink'
+                        : 'bg-mango-50/40 border-mango-100 text-stone-700 hover:bg-mango-50'
                     }`}
                   >
                     <div className="flex items-center space-x-2">
                       <span
                         className={`font-mono font-black text-[10px] px-1.5 py-0.5 rounded ${
-                          ep.method === 'POST' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-emerald-500/20 text-emerald-400'
+                          ep.method === 'POST' ? 'bg-indigo-500/20 text-wave-600' : 'bg-emerald-500/20 text-leaf-600'
                         }`}
                       >
                         {ep.method}
                       </span>
-                      <span className="font-mono text-slate-200 truncate">{ep.path}</span>
+                      <span className="font-mono text-stone-800 truncate">{ep.path}</span>
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-1 line-clamp-1">{ep.description}</p>
+                    <p className="text-[11px] text-stone-500 mt-1 line-clamp-1">{ep.description}</p>
                   </button>
                 );
               })}
@@ -269,33 +269,33 @@ module.exports = mongoose.model('Invoice', InvoiceSchema);`;
           </div>
 
           {/* Right: Endpoint Test Console (8 cols) */}
-          <div className="lg:col-span-8 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="lg:col-span-8 bg-white border border-mango-100 rounded-2xl p-5 shadow-sm space-y-4">
             {/* Endpoint header */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-mango-100">
               <div className="flex items-center space-x-2">
-                <span className="font-mono font-black text-xs px-2 py-1 rounded bg-indigo-500/20 text-indigo-400">
+                <span className="font-mono font-black text-xs px-2 py-1 rounded bg-indigo-500/20 text-wave-600">
                   {selectedEndpoint.method}
                 </span>
-                <span className="font-mono font-bold text-white text-sm">{selectedEndpoint.path}</span>
+                <span className="font-mono font-bold text-ink text-sm">{selectedEndpoint.path}</span>
               </div>
 
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() =>
                     copyToClipboard(
-                      `curl -X ${selectedEndpoint.method} "https://api.gimbooks.com${selectedEndpoint.path}" -H "Content-Type: application/json"`
+                      `curl -X ${selectedEndpoint.method} "https://api.mongo.com${selectedEndpoint.path}" -H "Content-Type: application/json"`
                     )
                   }
-                  className="flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+                  className="flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-mango-50/60 hover:bg-mango-100 text-stone-700 text-xs font-semibold"
                 >
-                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? <Check className="w-3.5 h-3.5 text-leaf-600" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copied ? 'Copied cURL' : 'Copy cURL'}</span>
                 </button>
 
                 <button
                   onClick={handleRunEndpoint}
                   disabled={isLoading}
-                  className="flex items-center space-x-1.5 px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black shadow-md shadow-emerald-500/20"
+                  className="flex items-center space-x-1.5 px-4 py-1.5 rounded-xl bg-mango-500 hover:bg-mango-600 text-white text-xs font-black shadow-md shadow-mango-500/25"
                 >
                   <Play className="w-3.5 h-3.5 fill-current" />
                   <span>{isLoading ? 'Sending...' : 'Send Test Request'}</span>
@@ -305,11 +305,11 @@ module.exports = mongoose.model('Invoice', InvoiceSchema);`;
 
             {/* Headers */}
             <div className="text-xs">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Headers</span>
-              <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 font-mono text-[11px] text-slate-300 mt-1">
+              <span className="text-[10px] font-bold text-stone-500 uppercase">Headers</span>
+              <div className="bg-cream p-2.5 rounded-xl border border-mango-100 font-mono text-[11px] text-stone-700 mt-1">
                 {Object.entries(selectedEndpoint.headers).map(([k, v]) => (
                   <div key={k}>
-                    <span className="text-indigo-400">{k}:</span> <span className="text-slate-200">{v}</span>
+                    <span className="text-wave-600">{k}:</span> <span className="text-stone-800">{v}</span>
                   </div>
                 ))}
               </div>
@@ -318,8 +318,8 @@ module.exports = mongoose.model('Invoice', InvoiceSchema);`;
             {/* Request Body if POST */}
             {selectedEndpoint.requestBodySample && (
               <div className="text-xs">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Request Payload (JSON)</span>
-                <pre className="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-[11px] text-emerald-400 overflow-x-auto mt-1 max-h-48">
+                <span className="text-[10px] font-bold text-stone-500 uppercase">Request Payload (JSON)</span>
+                <pre className="bg-cream p-3 rounded-xl border border-mango-100 font-mono text-[11px] text-leaf-600 overflow-x-auto mt-1 max-h-48">
                   {JSON.stringify(selectedEndpoint.requestBodySample, null, 2)}
                 </pre>
               </div>
@@ -328,12 +328,12 @@ module.exports = mongoose.model('Invoice', InvoiceSchema);`;
             {/* Response Output */}
             <div className="text-xs">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Server Response (Live Preview)</span>
-                <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
+                <span className="text-[10px] font-bold text-stone-500 uppercase">Server Response (Live Preview)</span>
+                <span className="text-[10px] font-mono font-bold text-leaf-600 bg-emerald-500/10 px-2 py-0.5 rounded">
                   Status: 200 OK • 38ms
                 </span>
               </div>
-              <pre className="bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono text-[11px] text-teal-300 overflow-x-auto max-h-60">
+              <pre className="bg-cream p-4 rounded-xl border border-mango-100 font-mono text-[11px] text-teal-700 overflow-x-auto max-h-60">
                 {JSON.stringify(simulatedResponse, null, 2)}
               </pre>
             </div>
@@ -343,22 +343,22 @@ module.exports = mongoose.model('Invoice', InvoiceSchema);`;
 
       {/* TAB 2: KOTLIN CODE */}
       {activeTab === 'KOTLIN' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-3">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="bg-white border border-mango-100 rounded-2xl p-5 shadow-sm space-y-3">
+          <div className="flex items-center justify-between pb-3 border-b border-mango-100">
             <div>
-              <h3 className="font-bold text-sm text-white">Android Studio Retrofit Client (Kotlin)</h3>
-              <p className="text-[11px] text-slate-400">Ready to copy and paste into your Android Studio project</p>
+              <h3 className="font-bold text-sm text-ink">Android Studio Retrofit Client (Kotlin)</h3>
+              <p className="text-[11px] text-stone-500">Ready to copy and paste into your Android Studio project</p>
             </div>
             <button
               onClick={() => copyToClipboard(kotlinSampleCode)}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-bold"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-leaf-600 text-xs font-bold"
             >
               <Copy className="w-3.5 h-3.5" />
               <span>Copy Kotlin Code</span>
             </button>
           </div>
 
-          <pre className="bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono text-xs text-indigo-300 overflow-x-auto leading-relaxed">
+          <pre className="bg-cream p-4 rounded-xl border border-mango-100 font-mono text-xs text-wave-700 overflow-x-auto leading-relaxed">
             {kotlinSampleCode}
           </pre>
         </div>
@@ -366,22 +366,22 @@ module.exports = mongoose.model('Invoice', InvoiceSchema);`;
 
       {/* TAB 3: MONGOOSE SCHEMAS */}
       {activeTab === 'MONGO' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-3">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="bg-white border border-mango-100 rounded-2xl p-5 shadow-sm space-y-3">
+          <div className="flex items-center justify-between pb-3 border-b border-mango-100">
             <div>
-              <h3 className="font-bold text-sm text-white">MongoDB Mongoose Database Models (Node.js)</h3>
-              <p className="text-[11px] text-slate-400">Strict schema validation for multi-tenant GST billing</p>
+              <h3 className="font-bold text-sm text-ink">MongoDB Mongoose Database Models (Node.js)</h3>
+              <p className="text-[11px] text-stone-500">Strict schema validation for multi-tenant GST billing</p>
             </div>
             <button
               onClick={() => copyToClipboard(mongoSchemaCode)}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-bold"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-leaf-600 text-xs font-bold"
             >
               <Copy className="w-3.5 h-3.5" />
               <span>Copy Schema Code</span>
             </button>
           </div>
 
-          <pre className="bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono text-xs text-emerald-300 overflow-x-auto leading-relaxed">
+          <pre className="bg-cream p-4 rounded-xl border border-mango-100 font-mono text-xs text-leaf-700 overflow-x-auto leading-relaxed">
             {mongoSchemaCode}
           </pre>
         </div>

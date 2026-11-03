@@ -37,6 +37,9 @@ interface BillingContextType {
   addInvoice: (invoice: Omit<Invoice, 'id' | 'createdAt'>) => Invoice;
   updateInvoiceStatus: (id: string, status: Invoice['status']) => void;
   deleteInvoice: (id: string) => void;
+  cancelInvoice: (id: string, reason: string) => void;
+  applyStockMovements: (moves: { productId?: string; name: string; quantity: number }[]) => void;
+  adjustPartyBalance: (partyId: string, delta: number) => void;
   generateEWayBill: (invoiceId: string, details: { transporterName: string; transporterId: string; vehicleNumber: string; approxDistanceKm: number }) => EWayBillRecord;
   generateEInvoice: (invoiceId: string) => EInvoiceRecord;
   
@@ -66,6 +69,7 @@ interface BillingContextType {
   
   quickNotification: string | null;
   showToast: (msg: string) => void;
+  logAudit: (action: string, details: string, status?: 'SUCCESS' | 'WARNING' | 'FAILED') => void;
   resetAllToDefault: () => void;
 }
 
@@ -73,7 +77,7 @@ const BillingContext = createContext<BillingContextType | undefined>(undefined);
 
 export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguage] = useState<Language>(() => {
-    return (localStorage.getItem('gimbooks_lang') as Language) || 'hi'; // Default to Hindi as per user's prompt!
+    return (localStorage.getItem('gimbooks_lang') as Language) || 'en'; // Default to English as requested
   });
 
   const [businesses, setBusinesses] = useState<BusinessProfile[]>(() => {
@@ -175,11 +179,11 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     localStorage.setItem('gimbooks_audit', JSON.stringify(auditLogs));
   }, [auditLogs]);
 
+  const toastTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const showToast = (msg: string) => {
     setQuickNotification(msg);
-    setTimeout(() => {
-      setQuickNotification(null);
-    }, 4000);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setQuickNotification(null), 4000);
   };
 
   const addAuditLog = (action: string, details: string, status: 'SUCCESS' | 'WARNING' | 'FAILED' = 'SUCCESS') => {
@@ -284,6 +288,46 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setInvoices(prev => prev.filter(i => i.id !== id));
     showToast(language === 'hi' ? `इनवॉइस ${inv.invoiceNumber} हटाई गई` : `Invoice ${inv.invoiceNumber} deleted`);
     addAuditLog('INVOICE_DELETE', `Deleted invoice ${inv.invoiceNumber}`);
+  };
+
+  // Rule 46: a cancelled invoice keeps its number (never reused) and stays in the register.
+  const cancelInvoice = (id: string, reason: string) => {
+    const inv = invoices.find(i => i.id === id);
+    if (!inv || inv.status === 'CANCELLED') return;
+    setInvoices(prev =>
+      prev.map(i =>
+        i.id === id
+          ? { ...i, status: 'CANCELLED', balanceDue: 0, notes: `CANCELLED: ${reason}${i.notes ? ' | ' + i.notes : ''}` }
+          : i
+      )
+    );
+    // put goods back and reverse the receivable that is still open
+    setProducts(prev =>
+      prev.map(prod => {
+        const qty = inv.items.filter(it => it.productId === prod.id || it.name === prod.name).reduce((a, it) => a + it.quantity, 0);
+        return qty ? { ...prod, currentStock: prod.currentStock + qty } : prod;
+      })
+    );
+    if (inv.balanceDue > 0) {
+      setParties(prev => prev.map(p => (p.id === inv.customerId ? { ...p, currentBalance: p.currentBalance - inv.balanceDue } : p)));
+    }
+    showToast(language === 'hi' ? `इनवॉइस ${inv.invoiceNumber} रद्द की गई` : `Invoice ${inv.invoiceNumber} cancelled`);
+    addAuditLog('INVOICE_CANCEL', `Cancelled ${inv.invoiceNumber} (₹${inv.grandTotal}). Reason: ${reason}`, 'WARNING');
+  };
+
+  // Silent stock update used by purchase bills, returns and notes (positive = stock in)
+  const applyStockMovements = (moves: { productId?: string; name: string; quantity: number }[]) => {
+    setProducts(prev =>
+      prev.map(prod => {
+        const qty = moves.filter(m => m.productId === prod.id || (!m.productId && m.name === prod.name)).reduce((a, m) => a + m.quantity, 0);
+        return qty ? { ...prod, currentStock: Math.max(0, prod.currentStock + qty) } : prod;
+      })
+    );
+  };
+
+  // positive delta = party owes us more (receivable), negative = we owe party (payable)
+  const adjustPartyBalance = (partyId: string, delta: number) => {
+    setParties(prev => prev.map(p => (p.id === partyId ? { ...p, currentBalance: p.currentBalance + delta } : p)));
   };
 
   const generateEWayBill = (invoiceId: string, details: { transporterName: string; transporterId: string; vehicleNumber: string; approxDistanceKm: number }): EWayBillRecord => {
@@ -508,6 +552,9 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         addInvoice,
         updateInvoiceStatus,
         deleteInvoice,
+        cancelInvoice,
+        applyStockMovements,
+        adjustPartyBalance,
         generateEWayBill,
         generateEInvoice,
         quotations,
@@ -530,6 +577,7 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setSelectedInvoiceForPrint,
         quickNotification,
         showToast,
+        logAudit: addAuditLog,
         resetAllToDefault
       }}
     >

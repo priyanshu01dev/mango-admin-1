@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useBilling } from '../context/BillingContext';
+import { useAdmin } from '../context/AdminContext';
+import { useDocuments } from '../context/DocumentsContext';
 import { TRANSLATIONS } from '../utils/formatters';
 import {
   Building2,
@@ -9,7 +11,8 @@ import {
   RotateCcw,
   ShieldCheck,
   ChevronDown,
-  Sparkles
+  Sparkles,
+  LayoutGrid
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -29,6 +32,13 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice }) => {
     resetAllToDefault
   } = useBilling();
 
+  const { resetAdminData } = useAdmin();
+  const { resetDocuments } = useDocuments();
+  const hour = new Date().getHours();
+  const greeting =
+    language === 'hi'
+      ? hour < 12 ? 'सुप्रभात' : hour < 17 ? 'नमस्ते' : 'शुभ संध्या'
+      : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const [showBizDropdown, setShowBizDropdown] = useState(false);
   const [showNotifyPanel, setShowNotifyPanel] = useState(false);
 
@@ -39,33 +49,35 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice }) => {
   const totalNotifications = lowStockCount + overdueCount;
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 lg:px-8 py-3.5 flex items-center justify-between no-print shadow-sm">
-      {/* Left: Active Business Switcher */}
+    <header className="sticky top-0 z-40 bg-cream/90 backdrop-blur-md border-b border-amber-500/20 px-4 lg:px-8 py-3 flex items-center justify-between no-print shadow-sm">
+      {/* Left: Mango Logo & User Greeting (Matching mobile app screenshot style) */}
       <div className="flex items-center space-x-3">
         <div className="relative">
           <button
             onClick={() => setShowBizDropdown(!showBizDropdown)}
-            className="flex items-center space-x-2.5 bg-slate-800/80 hover:bg-slate-800 px-3.5 py-2 rounded-xl border border-slate-700/60 text-left transition-all"
+            className="flex items-center space-x-3 bg-transparent text-left transition-all group"
           >
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 font-black text-sm shadow-md">
-              {activeBusiness.name.slice(0, 1)}
-            </div>
-            <div className="hidden sm:block">
+            <img
+              src="/logo.jpeg"
+              alt="Logo"
+              className="w-11 h-11 rounded-2xl object-cover shadow-lg border border-amber-500/30 shrink-0 group-hover:scale-105 transition-transform"
+            />
+            <div>
+              <div className="text-[11px] font-medium text-stone-500">
+                {greeting}, {language === 'hi' ? 'एडमिन' : 'Admin'}
+              </div>
               <div className="flex items-center space-x-1.5">
-                <span className="text-xs font-bold text-white max-w-[190px] truncate">
+                <span className="text-sm font-black text-ink max-w-[220px] truncate">
                   {activeBusiness.tradeName || activeBusiness.name}
                 </span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                <ChevronDown className="w-3.5 h-3.5 text-mango-600" />
               </div>
-              <p className="text-[10px] text-emerald-400 font-mono font-medium">
-                GSTIN: {activeBusiness.gstin}
-              </p>
             </div>
           </button>
 
           {showBizDropdown && (
-            <div className="absolute left-0 mt-2 w-72 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl p-1.5 z-50 animate-in fade-in slide-in-from-top-2">
-              <div className="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-700/50">
+            <div className="absolute left-0 mt-2 w-72 bg-white border border-mango-100 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2">
+              <div className="px-3 py-2 text-[10px] font-bold text-stone-500 uppercase tracking-wider border-b border-mango-100">
                 {language === 'hi' ? 'दुकान / बिजनेस बदलें' : 'Switch Store / Business'}
               </div>
               {businesses.map(b => (
@@ -75,129 +87,96 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice }) => {
                     setActiveBusinessId(b.id);
                     setShowBizDropdown(false);
                   }}
-                  className={`w-full text-left p-2.5 rounded-lg flex items-center space-x-2.5 text-xs transition-colors ${
+                  className={`w-full text-left p-2.5 rounded-xl flex items-center space-x-2.5 text-xs transition-colors my-1 ${
                     b.id === activeBusiness.id
-                      ? 'bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30'
-                      : 'text-slate-300 hover:bg-slate-700/60'
+                      ? 'bg-amber-500/15 text-mango-600 font-bold border border-amber-500/30'
+                      : 'text-stone-700 hover:bg-mango-50'
                   }`}
                 >
-                  <Building2 className="w-4 h-4 shrink-0 text-slate-400" />
+                  <Building2 className="w-4 h-4 shrink-0 text-stone-500" />
                   <div className="truncate">
                     <div className="font-semibold">{b.name}</div>
-                    <div className="text-[10px] text-slate-400 font-mono">{b.state} ({b.stateCode}) • {b.gstin}</div>
+                    <div className="text-[10px] text-stone-500 font-mono">{b.state} ({b.stateCode}) • {b.gstin}</div>
                   </div>
                 </button>
               ))}
             </div>
           )}
         </div>
-
-        {/* State Code Badge */}
-        <div className="hidden md:flex items-center space-x-1.5 bg-slate-800/40 border border-slate-700/50 px-2.5 py-1.5 rounded-lg text-xs">
-          <span className="text-slate-400 text-[11px]">{language === 'hi' ? 'राज्य:' : 'State:'}</span>
-          <span className="font-semibold text-slate-200">{activeBusiness.state}</span>
-          <span className="bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold">
-            Code: {activeBusiness.stateCode}
-          </span>
-        </div>
       </div>
 
-      {/* Toast Alert Banner if active */}
-      {quickNotification && (
-        <div className="hidden lg:flex items-center space-x-2 bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 px-3.5 py-1.5 rounded-full text-xs font-medium animate-pulse">
-          <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-          <span>{quickNotification}</span>
-        </div>
-      )}
-
-      {/* Right Controls: Language switch, notifications, Reset, New Bill button */}
-      <div className="flex items-center space-x-2.5">
+      {/* Right Controls: Language, Notifications Bell, Grid Menu, New Bill */}
+      <div className="flex items-center space-x-3">
         {/* Language Switcher */}
         <button
           onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')}
-          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700/70 text-xs font-semibold transition-all"
+          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-mango-50 text-stone-700 hover:text-ink border border-mango-100 text-xs font-semibold transition-all"
           title="Switch Language / भाषा बदलें"
         >
-          <Globe2 className="w-3.5 h-3.5 text-indigo-400" />
+          <Globe2 className="w-3.5 h-3.5 text-mango-600" />
           <span>{language === 'en' ? '🇮🇳 हिंदी' : '🇬🇧 English'}</span>
         </button>
 
-        {/* Notifications Bell */}
+        {/* Notifications Bell with Orange Dot */}
         <div className="relative">
           <button
             onClick={() => setShowNotifyPanel(!showNotifyPanel)}
-            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700/70 transition-colors relative"
+            className="p-2.5 rounded-xl bg-white hover:bg-mango-50 text-stone-700 hover:text-ink border border-mango-100 transition-colors relative"
             title="Alerts & Reminders"
           >
             <Bell className="w-4 h-4" />
-            {totalNotifications > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white font-bold text-[9px] flex items-center justify-center">
-                {totalNotifications}
-              </span>
-            )}
+            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
           </button>
 
           {showNotifyPanel && (
-            <div className="absolute right-0 mt-2 w-80 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl p-3 z-50">
-              <div className="flex justify-between items-center pb-2 border-b border-slate-700 text-xs font-bold text-slate-200">
+            <div className="absolute right-0 mt-2 w-80 bg-white border border-mango-100 rounded-2xl shadow-2xl p-3 z-50">
+              <div className="flex justify-between items-center pb-2 border-b border-mango-100 text-xs font-bold text-stone-800">
                 <span>{language === 'hi' ? 'अलर्ट्स व सूचनाएं' : 'Alerts & Reminders'}</span>
-                <span className="text-[10px] text-slate-400">{totalNotifications} Pending</span>
+                <span className="text-[10px] text-stone-500">{totalNotifications} Pending</span>
               </div>
               <div className="py-2 space-y-2 max-h-60 overflow-y-auto text-xs">
                 {lowStockCount > 0 && (
-                  <div className="bg-amber-500/10 border border-amber-500/20 p-2 rounded-lg text-amber-300">
+                  <div className="bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl text-mango-700">
                     <p className="font-semibold">⚠️ {lowStockCount} {language === 'hi' ? 'आइटम में कम स्टॉक है' : 'items are below minimum stock limit'}</p>
-                    <p className="text-[10px] text-amber-400/80 mt-0.5">Check Inventory tab to reorder stock.</p>
+                    <p className="text-[10px] text-mango-600/80 mt-0.5">Check Inventory tab to reorder stock.</p>
                   </div>
                 )}
                 {overdueCount > 0 && (
-                  <div className="bg-rose-500/10 border border-rose-500/20 p-2 rounded-lg text-rose-300">
+                  <div className="bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-xl text-rose-700">
                     <p className="font-semibold">⏳ {overdueCount} {language === 'hi' ? 'इनवॉइस का भुगतान बाकी है' : 'invoices have pending balance'}</p>
-                    <p className="text-[10px] text-rose-400/80 mt-0.5">Send WhatsApp reminder to customers.</p>
+                    <p className="text-[10px] text-rose-600/80 mt-0.5">Send WhatsApp reminder to customers.</p>
                   </div>
                 )}
                 {totalNotifications === 0 && (
-                  <p className="text-center text-slate-400 py-3 text-xs">{language === 'hi' ? 'कोई नया अलर्ट नहीं है' : 'All clear! No urgent alerts.'}</p>
+                  <p className="text-center text-stone-500 py-3 text-xs">{language === 'hi' ? 'कोई नया अलर्ट नहीं है' : 'All clear! No urgent alerts.'}</p>
                 )}
               </div>
             </div>
           )}
         </div>
 
-        {/* Reset Demo Data Button */}
+        {/* Grid menu icon */}
         <button
           onClick={() => {
-            if (confirm(language === 'hi' ? 'क्या आप डेमो डेटा रीसेट करना चाहते हैं?' : 'Reset all data back to clean demo state?')) {
-              resetAllToDefault();
-            }
+            if (!window.confirm('Reset all demo data to defaults? Your changes will be lost.')) return;
+            resetAdminData();
+            resetDocuments();
+            resetAllToDefault();
           }}
-          className="hidden sm:flex items-center space-x-1 p-2 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-slate-200 border border-slate-700/70 transition-colors text-xs"
-          title="Reset Demo Data"
+          className="hidden sm:flex p-2.5 rounded-xl bg-white hover:bg-mango-50 text-stone-700 hover:text-ink border border-mango-100 transition-colors"
+          title="Reset Demo Data / Grid Menu"
         >
-          <RotateCcw className="w-3.5 h-3.5" />
+          <LayoutGrid className="w-4 h-4 text-mango-600" />
         </button>
 
         {/* Quick Action: New GST Invoice CTA */}
         <button
           onClick={onOpenNewInvoice}
-          className="flex items-center space-x-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs shadow-lg shadow-emerald-500/20 transition-all transform active:scale-95"
+          className="flex items-center space-x-1.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-white font-black px-4 py-2 rounded-2xl text-xs shadow-lg shadow-amber-500/25 transition-all transform active:scale-95"
         >
           <PlusCircle className="w-4 h-4" />
           <span>{t.createNewInvoice}</span>
         </button>
-
-        {/* Super Admin User Profile indicator */}
-        <div className="hidden xl:flex items-center space-x-2 pl-2 border-l border-slate-800">
-          <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-xs text-white">
-            PK
-          </div>
-          <div className="text-left text-xs leading-none">
-            <span className="font-bold text-slate-200">Priyanshu</span>
-            <span className="block text-[10px] text-emerald-400 mt-1 flex items-center">
-              <ShieldCheck className="w-2.5 h-2.5 mr-0.5 inline" /> Super Admin
-            </span>
-          </div>
-        </div>
       </div>
     </header>
   );

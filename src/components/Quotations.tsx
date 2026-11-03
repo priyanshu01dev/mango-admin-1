@@ -85,29 +85,29 @@ export const Quotations: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Bar */}
-      <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white border border-mango-100 p-5 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-black text-white">{t.quotations}</h2>
-          <p className="text-slate-400 text-xs mt-0.5">
+          <h2 className="text-xl font-black text-ink">{t.quotations}</h2>
+          <p className="text-stone-500 text-xs mt-0.5">
             {language === 'hi' ? 'कोटेशन / एस्टिमेट बनाएं और 1-क्लिक में GST बिल में बदलें' : 'Generate price estimates and convert directly to GST invoices'}
           </p>
         </div>
 
         <div className="flex items-center space-x-3">
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-500" />
             <input
               type="text"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="Search quotation..."
-              className="bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-400 w-56"
+              className="bg-mango-50/60 border border-mango-200/70 rounded-xl pl-9 pr-4 py-2 text-xs text-ink placeholder-stone-400 w-56"
             />
           </div>
 
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center space-x-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs shadow-md shadow-emerald-500/20"
+            className="flex items-center space-x-1.5 bg-mango-500 hover:bg-mango-600 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow-md shadow-mango-500/25"
           >
             <PlusCircle className="w-4 h-4" />
             <span>{t.createQuotation}</span>
@@ -116,10 +116,10 @@ export const Quotations: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white border border-mango-100 rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-800/80 text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-800">
+          <table className="w-full text-left text-xs text-stone-700">
+            <thead className="bg-mango-50/70 text-stone-500 uppercase font-semibold text-[10px] tracking-wider border-b border-mango-100">
               <tr>
                 <th className="p-3.5 pl-5">Quotation No</th>
                 <th className="p-3.5">Customer</th>
@@ -130,25 +130,25 @@ export const Quotations: React.FC = () => {
                 <th className="p-3.5 pr-5 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/80">
+            <tbody className="divide-y divide-mango-100">
               {currentQuotations.map(q => (
-                <tr key={q.id} className="hover:bg-slate-800/40 transition-colors">
-                  <td className="p-3.5 pl-5 font-mono font-bold text-white">{q.quotationNumber}</td>
+                <tr key={q.id} className="hover:bg-mango-50/60 transition-colors">
+                  <td className="p-3.5 pl-5 font-mono font-bold text-ink">{q.quotationNumber}</td>
                   <td className="p-3.5">
-                    <div className="font-semibold text-slate-200">{q.customerName}</div>
-                    <div className="text-[10px] text-slate-400 font-mono">{q.customerGstin || 'Consumer'}</div>
+                    <div className="font-semibold text-stone-800">{q.customerName}</div>
+                    <div className="text-[10px] text-stone-500 font-mono">{q.customerGstin || 'Consumer'}</div>
                   </td>
-                  <td className="p-3.5 text-slate-400">{formatDate(q.date)}</td>
-                  <td className="p-3.5 text-slate-400">{formatDate(q.validUntil)}</td>
-                  <td className="p-3.5 text-right font-bold text-emerald-400 font-mono text-sm">
+                  <td className="p-3.5 text-stone-500">{formatDate(q.date)}</td>
+                  <td className="p-3.5 text-stone-500">{formatDate(q.validUntil)}</td>
+                  <td className="p-3.5 text-right font-bold text-leaf-600 font-mono text-sm">
                     {formatINR(q.grandTotal)}
                   </td>
                   <td className="p-3.5 text-center">
                     <span
                       className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                         q.status === 'CONVERTED'
-                          ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                          : 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/30'
+                          ? 'bg-emerald-500/15 text-leaf-600 border border-emerald-500/30'
+                          : 'bg-indigo-500/15 text-wave-600 border border-indigo-500/30'
                       }`}
                     >
                       {q.status}
@@ -158,13 +158,13 @@ export const Quotations: React.FC = () => {
                     {q.status !== 'CONVERTED' ? (
                       <button
                         onClick={() => convertQuotationToInvoice(q.id)}
-                        className="flex items-center space-x-1.5 ml-auto px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-bold transition-all"
+                        className="flex items-center space-x-1.5 ml-auto px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-leaf-600 border border-emerald-500/30 rounded-lg text-xs font-bold transition-all"
                       >
                         <ArrowRightLeft className="w-3.5 h-3.5" />
                         <span>{t.convertInvoice}</span>
                       </button>
                     ) : (
-                      <span className="text-[11px] text-slate-400">Converted ✓</span>
+                      <span className="text-[11px] text-stone-500">Converted ✓</span>
                     )}
                   </td>
                 </tr>
@@ -172,7 +172,7 @@ export const Quotations: React.FC = () => {
 
               {currentQuotations.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-400">
+                  <td colSpan={7} className="p-8 text-center text-stone-500">
                     No quotations created yet.
                   </td>
                 </tr>
@@ -184,11 +184,11 @@ export const Quotations: React.FC = () => {
 
       {/* CREATE MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="bg-slate-900 border border-slate-700 text-white rounded-2xl p-6 max-w-xl w-full shadow-2xl space-y-4 text-xs">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="font-bold text-sm text-white">Create New Quotation / Estimate</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4">
+          <div className="bg-white border border-mango-200/70 text-ink rounded-2xl p-6 max-w-xl w-full shadow-2xl space-y-4 text-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-mango-100">
+              <h3 className="font-bold text-sm text-ink">Create New Quotation / Estimate</h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-stone-500 hover:text-ink">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -196,34 +196,34 @@ export const Quotations: React.FC = () => {
             <form onSubmit={handleSaveQuotation} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">Quotation Number</label>
+                  <label className="block text-[11px] text-stone-500 mb-1">Quotation Number</label>
                   <input
                     type="text"
                     required
                     value={quotNumber}
                     onChange={e => setQuotNumber(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 font-mono text-white"
+                    className="w-full bg-mango-50/60 border border-mango-200/70 rounded-lg p-2 font-mono text-ink"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">Validity (Days)</label>
+                  <label className="block text-[11px] text-stone-500 mb-1">Validity (Days)</label>
                   <input
                     type="number"
                     min="1"
                     value={validDays}
                     onChange={e => setValidDays(parseInt(e.target.value, 10) || 15)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white"
+                    className="w-full bg-mango-50/60 border border-mango-200/70 rounded-lg p-2 text-ink"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] text-slate-400 mb-1">Select Customer</label>
+                <label className="block text-[11px] text-stone-500 mb-1">Select Customer</label>
                 <select
                   value={selectedCustomerId}
                   onChange={e => setSelectedCustomerId(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white"
+                  className="w-full bg-mango-50/60 border border-mango-200/70 rounded-lg p-2 text-ink"
                 >
                   {parties.map(p => (
                     <option key={p.id} value={p.id}>
@@ -234,26 +234,26 @@ export const Quotations: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[11px] text-slate-400 mb-1">Notes / Terms</label>
+                <label className="block text-[11px] text-stone-500 mb-1">Notes / Terms</label>
                 <textarea
                   rows={2}
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white"
+                  className="w-full bg-mango-50/60 border border-mango-200/70 rounded-lg p-2 text-ink"
                 />
               </div>
 
-              <div className="flex justify-end space-x-2 pt-3 border-t border-slate-800">
+              <div className="flex justify-end space-x-2 pt-3 border-t border-mango-100">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300"
+                  className="px-3 py-1.5 rounded-lg bg-mango-50/60 text-stone-700"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold"
+                  className="px-4 py-1.5 rounded-lg bg-mango-500 hover:bg-mango-600 text-white font-bold"
                 >
                   Save Quotation
                 </button>
