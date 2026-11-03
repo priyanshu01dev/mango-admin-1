@@ -1,0 +1,6 @@
+{
+  "name": "GimBooks Pro - GST Billing Admin & Backend Suite",
+  "description": "Comprehensive GST billing, e-invoice, e-way bill, inventory management and Android API backend admin suite.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
