@@ -1,27 +1,25 @@
 import React, { useState } from 'react';
 import { useAdmin } from '../../context/AdminContext';
-import { Integration, ComplianceRules } from '../../types/admin';
-import { Card, PageHeader, Badge, PrimaryButton, GhostButton, inputCls, Field, Drawer, SegmentedTabs } from './ui';
-import { Plug, ShieldCheck, Eye, EyeOff, RefreshCw, Settings2, AlertTriangle } from 'lucide-react';
+import { ComplianceRules } from '../../types/admin';
+import { Card, PageHeader, Badge, PrimaryButton, GhostButton, inputCls, Field, SegmentedTabs } from './ui';
+import { Plug, ShieldCheck, RefreshCw } from 'lucide-react';
 
-const STATUS_TONE = { CONNECTED: 'leaf', NOT_CONFIGURED: 'stone', ERROR: 'rose' } as const;
+const STATUS_TONE = { CONNECTED: 'leaf', NOT_CONFIGURED: 'stone', ERROR: 'rose', MOCK: 'amber' } as const;
 
-const mask = (v: string) => (v.length <= 6 ? '••••••' : `${v.slice(0, 4)}••••••${v.slice(-2)}`);
 
 export const Integrations: React.FC = () => {
-  const { integrations, compliance, updateCompliance, testIntegration } = useAdmin();
+  const { integrations, compliance, updateCompliance, reload } = useAdmin();
   const [tab, setTab] = useState<'INTEGRATIONS' | 'COMPLIANCE'>('INTEGRATIONS');
-  const [editingKey, setEditingKey] = useState<string | null>(null);
-  const editing = integrations.find(i => i.key === editingKey) ?? null;
 
   const categories = Array.from(new Set(integrations.map(i => i.category)));
+  const notReady = integrations.filter(i => i.status !== 'CONNECTED');
 
   return (
     <div className="space-y-6 pb-12">
       <PageHeader
         icon={Plug}
         title="Integrations & GST compliance"
-        subtitle="GSP for e-invoice / e-way bill, GSTIN lookup, payment gateways, WhatsApp, SMS/OTP, backups, plus the GST rule thresholds the app enforces"
+        subtitle="Live status of the GSP, payments, messaging and database connections, plus the GST rule thresholds the server enforces"
         actions={
           <SegmentedTabs
             value={tab}
@@ -36,14 +34,13 @@ export const Integrations: React.FC = () => {
 
       {tab === 'INTEGRATIONS' && (
         <div className="space-y-6">
-          {integrations.some(i => i.status === 'ERROR') && (
-            <div className="flex items-start gap-2 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl p-3 text-xs">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              <span>
-                <b>{integrations.filter(i => i.status === 'ERROR').map(i => i.name).join(', ')}</b> needs attention. Merchants may not receive invoices or reminders.
-              </span>
-            </div>
-          )}
+          <div className="flex items-start gap-2 bg-wave-50 border border-blue-100 text-wave-700 rounded-xl p-3 text-xs">
+            <ShieldCheck className="w-4 h-4 shrink-0" />
+            <span>
+              API keys and secrets are set as environment variables on the server and are never sent to the browser.
+              {notReady.length > 0 && <> <b>{notReady.length}</b> service{notReady.length > 1 ? 's are' : ' is'} not connected yet.</>}
+            </span>
+          </div>
           {categories.map(cat => (
             <div key={cat}>
               <h3 className="text-[11px] font-black uppercase tracking-wider text-stone-500 mb-2 px-1">{cat}</h3>
@@ -57,98 +54,29 @@ export const Integrations: React.FC = () => {
                           <div className="text-[11px] text-stone-500">{i.provider}</div>
                         </div>
                         <div className="flex flex-col items-end gap-1">
-                          <Badge tone={STATUS_TONE[i.status]}>{i.status.replace('_', ' ')}</Badge>
+                          <Badge tone={STATUS_TONE[i.status]}>{i.status === 'MOCK' ? 'DEV / MOCK' : i.status.replace('_', ' ')}</Badge>
                           <Badge tone={i.environment === 'PRODUCTION' ? 'mango' : 'wave'}>{i.environment}</Badge>
                         </div>
                       </div>
                       <p className="text-[11px] text-stone-600 mt-2">{i.note}</p>
                     </div>
-                    <div className="flex items-center justify-between text-[10px] text-stone-500">
-                      <span>Checked {i.lastChecked}</span>
-                      <div className="flex gap-1.5">
-                        <GhostButton onClick={() => testIntegration(i.key)}><RefreshCw className="w-3 h-3" /> Test</GhostButton>
-                        <GhostButton onClick={() => setEditingKey(i.key)}><Settings2 className="w-3 h-3" /> Configure</GhostButton>
-                      </div>
+                    <div className="text-[10px] text-stone-500">
+                      Server env vars:{' '}
+                      {i.envVars.map(v => (
+                        <code key={v} className="bg-mango-50 border border-mango-100 rounded px-1 py-0.5 mr-1 font-mono text-stone-700">{v}</code>
+                      ))}
                     </div>
                   </Card>
                 ))}
               </div>
             </div>
           ))}
+          <GhostButton onClick={() => reload()}><RefreshCw className="w-3 h-3" /> Re-check status</GhostButton>
         </div>
       )}
 
-      {tab === 'COMPLIANCE' && <ComplianceForm rules={compliance} onSave={updateCompliance} />}
-
-      <Drawer open={!!editing} onClose={() => setEditingKey(null)} title={editing ? `Configure · ${editing.name}` : ''}>
-        {editing && <IntegrationForm key={editing.key} integration={editing} onDone={() => setEditingKey(null)} />}
-      </Drawer>
+      {tab === 'COMPLIANCE' && <ComplianceForm key={JSON.stringify(compliance)} rules={compliance} onSave={updateCompliance} />}
     </div>
-  );
-};
-
-const IntegrationForm: React.FC<{ integration: Integration; onDone: () => void }> = ({ integration, onDone }) => {
-  const { updateIntegration } = useAdmin();
-  const [draft, setDraft] = useState<Integration>(integration);
-  const [reveal, setReveal] = useState<Record<string, boolean>>({});
-
-  return (
-    <form
-      className="space-y-4 text-xs"
-      onSubmit={e => {
-        e.preventDefault();
-        updateIntegration(draft);
-        onDone();
-      }}
-    >
-      <Card className="p-4 grid grid-cols-2 gap-3">
-        <Field label="Provider">
-          <select className={inputCls} value={draft.provider} onChange={e => setDraft({ ...draft, provider: e.target.value })}>
-            {draft.providerOptions.map(p => <option key={p}>{p}</option>)}
-          </select>
-        </Field>
-        <Field label="Environment">
-          <select className={inputCls} value={draft.environment} onChange={e => setDraft({ ...draft, environment: e.target.value as Integration['environment'] })}>
-            <option value="SANDBOX">Sandbox</option>
-            <option value="PRODUCTION">Production</option>
-          </select>
-        </Field>
-      </Card>
-      <Card className="p-4 space-y-3">
-        {draft.fields.map((f, idx) => (
-          <Field key={f.key} label={f.label}>
-            <div className="flex gap-1.5">
-              <input
-                className={`${inputCls} font-mono`}
-                type={f.secret && !reveal[f.key] ? 'password' : 'text'}
-                value={f.value}
-                onChange={e => {
-                  const fields = [...draft.fields];
-                  fields[idx] = { ...f, value: e.target.value };
-                  setDraft({ ...draft, fields });
-                }}
-                autoComplete="off"
-              />
-              {f.secret && (
-                <button type="button" onClick={() => setReveal({ ...reveal, [f.key]: !reveal[f.key] })} className="px-2 rounded-lg border border-mango-200 text-stone-500 hover:text-ink" aria-label="Show / hide">
-                  {reveal[f.key] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                </button>
-              )}
-            </div>
-            {f.secret && !reveal[f.key] && <span className="text-[10px] text-stone-400">Stored: {mask(f.value)}</span>}
-          </Field>
-        ))}
-        <p className="text-[10px] text-stone-500">
-          Demo only: in production, secrets must live in the backend secret store (e.g. AWS Secrets Manager), never in the browser.
-        </p>
-      </Card>
-      {draft.environment === 'PRODUCTION' && integration.environment === 'SANDBOX' && (
-        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg p-2.5">
-          <AlertTriangle className="w-4 h-4 shrink-0" /> Switching to production: complete GSP certification on the NIC sandbox first.
-        </div>
-      )}
-      <PrimaryButton type="submit">Save configuration</PrimaryButton>
-    </form>
   );
 };
 

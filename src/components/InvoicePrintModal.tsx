@@ -84,10 +84,11 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoice, o
               </div>
               <p className="text-[10px] text-slate-500 font-medium mt-1">ORIGINAL FOR RECIPIENT</p>
               {invoice.eInvoiceStatus === 'GENERATED' && (
-                <div className="mt-2 bg-emerald-50 border border-emerald-300 text-emerald-800 px-2 py-1 rounded text-[10px] text-left">
+                <div className={`mt-2 px-2 py-1 rounded text-[10px] text-left border ${invoice.irnMock ? 'bg-rose-50 border-rose-400 text-rose-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>
                   <div className="font-bold flex items-center space-x-1">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                    <span>e-Invoice IRN Verified</span>
+                    <CheckCircle2 className={`w-3 h-3 ${invoice.irnMock ? 'text-rose-600' : 'text-emerald-600'}`} />
+                    {/* a mock IRN (GSP_MODE=mock) must never look like a real one on paper */}
+                    <span>{invoice.irnMock ? 'MOCK IRN: NOT A VALID e-INVOICE' : 'e-Invoice IRN'}</span>
                   </div>
                   <div className="font-mono text-[9px] truncate max-w-[200px]" title={invoice.irnNumber}>
                     {invoice.irnNumber}

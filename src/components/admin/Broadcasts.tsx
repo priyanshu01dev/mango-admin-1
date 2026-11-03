@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
 import { useAdmin } from '../../context/AdminContext';
-import { PLATFORM_TOTALS } from '../../data/adminData';
 import { Broadcast, BroadcastChannel, BroadcastSegment } from '../../types/admin';
 import { Card, PageHeader, Badge, PrimaryButton, GhostButton, inputCls, Field, fmtNum } from './ui';
 import { Megaphone, Bell, MessageCircle, MessageSquare, Mail, Send, CalendarClock, Save } from 'lucide-react';
@@ -22,22 +21,11 @@ const SEGMENTS: { id: BroadcastSegment; label: string }[] = [
   { id: 'EINVOICE_ELIGIBLE', label: 'AATO > ₹5 Cr (e-invoice mandatory)' }
 ];
 
-const segmentSize = (s: BroadcastSegment): number => {
-  switch (s) {
-    case 'ALL': return PLATFORM_TOTALS.merchants;
-    case 'FREE': return PLATFORM_TOTALS.planMix.free;
-    case 'PAID': return PLATFORM_TOTALS.paidMerchants;
-    case 'TRIAL_EXPIRING': return 312;
-    case 'PAST_DUE': return 486;
-    case 'INACTIVE_14D': return 6820;
-    case 'EINVOICE_ELIGIBLE': return 2210;
-  }
-};
-
 const MAX_SMS = 160;
 
 export const Broadcasts: React.FC = () => {
-  const { broadcasts, createBroadcast } = useAdmin();
+  const { broadcasts, createBroadcast, segments } = useAdmin();
+  const segmentSize = (seg: BroadcastSegment) => segments[seg] ?? 0;
   const [form, setForm] = useState({
     title: '',
     message: '',
@@ -189,7 +177,8 @@ export const Broadcasts: React.FC = () => {
                   <td className="p-3 text-[11px]">{SEGMENTS.find(s => s.id === b.segment)?.label}</td>
                   <td className="p-3 text-[10px]">{b.channels.join(', ')}</td>
                   <td className="p-3">
-                    <Badge tone={b.status === 'SENT' ? 'leaf' : b.status === 'SCHEDULED' ? 'wave' : 'stone'}>{b.status}</Badge>
+                    <Badge tone={b.status === 'SENT' ? 'leaf' : b.status === 'SCHEDULED' ? 'wave' : b.status === 'QUEUED' ? 'amber' : 'stone'}>{b.status}</Badge>
+                    {b.status === 'QUEUED' && <div className="text-[10px] text-stone-500 mt-0.5">waits for a connected sender</div>}
                     <div className="text-[10px] text-stone-500 mt-0.5">{b.sentAt ?? b.scheduledAt ?? ''}</div>
                   </td>
                   <td className="p-3 text-right font-mono">{fmtNum(b.recipients)}</td>

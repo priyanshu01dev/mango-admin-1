@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useDocuments, DOC_LABEL } from '../context/DocumentsContext';
 import { InvoiceSettings, InvoiceTemplate, DocType } from '../types/documents';
 import { isValidDocNumber } from '../utils/gst';
+import { expandPrefix } from '../api/mappers';
 import { Card, Field, inputCls, PrimaryButton, GhostButton, Toggle } from './admin/ui';
 import { FileCog } from 'lucide-react';
 
@@ -18,9 +19,9 @@ export const InvoiceSettingsPanel: React.FC = () => {
   const [s, setS] = useState<InvoiceSettings>(settings);
   const dirty = JSON.stringify(s) !== JSON.stringify(settings);
 
-  const preview = s.prefix + String(s.nextNumber).padStart(s.padding, '0');
+  const preview = expandPrefix(s.prefix) + String(s.nextNumber).padStart(s.padding, '0');
   const previewOk = isValidDocNumber(preview);
-  const prefixesOk = (Object.values(s.docPrefixes) as string[]).every(p => isValidDocNumber(p + '0'.repeat(s.padding)));
+  const prefixesOk = (Object.values(s.docPrefixes) as string[]).every(p => isValidDocNumber(expandPrefix(p) + '0'.repeat(s.padding)));
 
   return (
     <Card className="p-6 space-y-6 text-xs">
@@ -36,11 +37,11 @@ export const InvoiceSettingsPanel: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Field label="Invoice prefix" hint="Letters, digits, - and / only">
-          <input className={`${inputCls} font-mono uppercase`} value={s.prefix} onChange={e => setS({ ...s, prefix: e.target.value.toUpperCase().replace(/[^A-Z0-9/-]/g, '') })} />
+        <Field label="Invoice prefix" hint="{FY} becomes the financial year, e.g. 26-27">
+          <input className={`${inputCls} font-mono uppercase`} value={s.prefix} onChange={e => setS({ ...s, prefix: e.target.value.toUpperCase().replace(/[^A-Z0-9/{}-]/g, '') })} />
         </Field>
-        <Field label="Starting / next number" hint={`Actual next: ${nextInvoiceNumber()}`}>
-          <input type="number" min={1} className={`${inputCls} font-mono`} value={s.nextNumber} onChange={e => setS({ ...s, nextNumber: Math.max(1, Number(e.target.value)) })} />
+        <Field label="Next number" hint="Kept by the server so numbers are never skipped or reused">
+          <input type="number" disabled className={`${inputCls} font-mono bg-stone-50 text-stone-500`} value={s.nextNumber} title={nextInvoiceNumber()} />
         </Field>
         <Field label="Digits (zero padding)">
           <select className={inputCls} value={s.padding} onChange={e => setS({ ...s, padding: Number(e.target.value) })}>
@@ -67,7 +68,7 @@ export const InvoiceSettingsPanel: React.FC = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {(Object.keys(s.docPrefixes) as DocType[]).map(k => (
             <Field key={k} label={DOC_LABEL[k]}>
-              <input className={`${inputCls} font-mono uppercase`} value={s.docPrefixes[k]} onChange={e => setS({ ...s, docPrefixes: { ...s.docPrefixes, [k]: e.target.value.toUpperCase().replace(/[^A-Z0-9/-]/g, '') } })} />
+              <input className={`${inputCls} font-mono uppercase`} value={s.docPrefixes[k]} onChange={e => setS({ ...s, docPrefixes: { ...s.docPrefixes, [k]: e.target.value.toUpperCase().replace(/[^A-Z0-9/{}-]/g, '') } })} />
             </Field>
           ))}
         </div>

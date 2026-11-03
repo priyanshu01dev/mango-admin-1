@@ -65,7 +65,7 @@ export const DocumentForm: React.FC<{ docType: DocType; onDone: () => void }> = 
   const eWayWarning = (docType === 'DELIVERY_CHALLAN' || docType === 'PURCHASE_BILL') && totals.grandTotal > 50000;
   const invalid = !party || lines.length === 0 || lines.some(l => l.quantity <= 0 || l.price < 0) || ((docType === 'CREDIT_NOTE' || docType === 'DEBIT_NOTE') && !reference);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (invalid || !party) return;
     const doc: NewDocument = {
@@ -93,8 +93,7 @@ export const DocumentForm: React.FC<{ docType: DocType; onDone: () => void }> = 
       vehicleNumber: vehicleNumber || undefined,
       notes: notes || undefined
     };
-    createDocument(doc);
-    onDone();
+    if (await createDocument(doc)) onDone();
   };
 
   return (

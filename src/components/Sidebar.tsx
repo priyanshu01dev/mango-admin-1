@@ -2,6 +2,7 @@ import React from 'react';
 import { useBilling } from '../context/BillingContext';
 import { useAdmin } from '../context/AdminContext';
 import { useDocuments } from '../context/DocumentsContext';
+import { useAuth } from '../context/AuthContext';
 import { TRANSLATIONS } from '../utils/formatters';
 import {
   LayoutDashboard,
@@ -66,6 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
   const { language, invoices, products } = useBilling();
   const { tickets, merchants, integrations } = useAdmin();
   const { documents } = useDocuments();
+  const { isPlatformAdmin, user } = useAuth();
   const t = TRANSLATIONS[language];
   const hi = language === 'hi';
 
@@ -114,6 +116,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
     }
   ];
 
+  // merchants (no platform role) only see their own workspace
+  const visibleSections = isPlatformAdmin ? sections : sections.slice(1);
+
   return (
     <aside className="w-64 bg-white/80 backdrop-blur border-r border-mango-100 flex flex-col shrink-0 no-print">
       <div className="p-4 border-b border-mango-100 flex items-center space-x-3">
@@ -131,7 +136,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
       </div>
 
       <nav className="flex-1 px-3 py-3 overflow-y-auto space-y-4">
-        {sections.map(section => (
+        {visibleSections.map(section => (
           <div key={section.title} className="space-y-0.5">
             <div className="px-3 pb-1 text-[10px] font-bold text-stone-400 uppercase tracking-wider">{section.title}</div>
             {section.items.map(item => {
@@ -165,7 +170,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
       <div className="p-3 border-t border-mango-100">
         <div className="flex items-center justify-between text-[10px] text-stone-500 px-1">
           <span className="flex items-center">
-            <ShieldCheck className="w-3 h-3 text-leaf-600 mr-1" /> Super Admin
+            <ShieldCheck className="w-3 h-3 text-leaf-600 mr-1" /> {user?.platformRole === 'SUPER_ADMIN' ? 'Super Admin' : user?.platformRole === 'SUPPORT' ? 'Support' : 'Merchant'}
           </span>
           <span className="font-mono">v3.4.2</span>
         </div>

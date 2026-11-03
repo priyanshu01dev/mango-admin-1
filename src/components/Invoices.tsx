@@ -220,12 +220,12 @@ export const Invoices: React.FC<InvoicesProps> = ({
   const roundOff = parseFloat((roundedGrandTotal - rawGrandTotal).toFixed(2));
 
   // Submit invoice
-  const handleSaveInvoice = (e: React.FormEvent) => {
+  const handleSaveInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     const customer = parties.find(p => p.id === selectedCustomerId);
     const custName = customer?.name || customCustomerName || 'Walk-in Retail Buyer';
-    const custPhone = customer?.phone || customCustomerPhone || '+91 99999 99999';
-    const custAddress = customer?.billingAddress || customCustomerAddress || 'Local Area, City';
+    const custPhone = customer?.phone || customCustomerPhone || '';
+    const custAddress = customer?.billingAddress || customCustomerAddress || '';
     const custGstin = customer?.gstin || customCustomerGstin;
 
     const num = invoiceNumber.trim().toUpperCase();
@@ -241,7 +241,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
     const balanceDue = Math.max(0, roundedGrandTotal - initialAmountPaid);
     const status: InvoiceStatus = balanceDue === 0 ? 'PAID' : (initialAmountPaid > 0 ? 'PARTIALLY_PAID' : 'UNPAID');
 
-    addInvoice({
+    const ok = await addInvoice({
       invoiceNumber: num,
       businessId: activeBusiness.id,
       customerId: selectedCustomerId,
@@ -271,7 +271,8 @@ export const Invoices: React.FC<InvoicesProps> = ({
       eWayBillStatus: 'NOT_GENERATED'
     });
 
-    setIsCreateModalOpen(false);
+    // keep the form open (with what was typed) if the server rejected it
+    if (ok) setIsCreateModalOpen(false);
   };
 
   const handleRecordPaymentSubmit = (e: React.FormEvent) => {

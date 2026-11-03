@@ -1,46 +1,8 @@
 import { InvoiceItem, Product } from '../types';
+import { recalcItem } from '../../shared/gst';
 
-const r2 = (n: number) => Math.round(n * 100) / 100;
-
-/** Recompute taxable value and CGST/SGST or IGST for one line. */
-export function recalcItem(item: InvoiceItem, isInterState: boolean): InvoiceItem {
-  const gross = item.price * item.quantity;
-  const taxable = Math.max(0, gross - (gross * (item.discountPercent || 0)) / 100);
-  const tax = (taxable * item.gstRate) / 100;
-  const cgst = isInterState ? 0 : tax / 2;
-  const sgst = isInterState ? 0 : tax / 2;
-  const igst = isInterState ? tax : 0;
-  return {
-    ...item,
-    taxableAmount: r2(taxable),
-    cgstAmount: r2(cgst),
-    sgstAmount: r2(sgst),
-    igstAmount: r2(igst),
-    totalAmount: r2(taxable + tax)
-  };
-}
-
-export function docTotals(items: InvoiceItem[], roundOff = true) {
-  const sum = (k: keyof InvoiceItem) => r2(items.reduce((a, i) => a + (i[k] as number), 0));
-  const taxableTotal = sum('taxableAmount');
-  const cgstTotal = sum('cgstAmount');
-  const sgstTotal = sum('sgstAmount');
-  const igstTotal = sum('igstAmount');
-  const totalGst = r2(cgstTotal + sgstTotal + igstTotal);
-  const exact = r2(taxableTotal + totalGst);
-  const grandTotal = roundOff ? Math.round(exact) : exact;
-  return {
-    subTotal: r2(items.reduce((a, i) => a + i.price * i.quantity, 0)),
-    totalDiscount: r2(items.reduce((a, i) => a + (i.price * i.quantity * (i.discountPercent || 0)) / 100, 0)),
-    taxableTotal,
-    cgstTotal,
-    sgstTotal,
-    igstTotal,
-    totalGst,
-    roundOff: r2(grandTotal - exact),
-    grandTotal
-  };
-}
+// GST maths lives in /shared so the web app and the API server compute identical totals.
+export { recalcItem, docTotals, fyLabel, isValidDocNumber, daysBetween, isValidGstin, isValidPan, r2 } from '../../shared/gst';
 
 export function itemFromProduct(p: Product, isInterState: boolean, priceField: 'sellingPrice' | 'purchasePrice' = 'sellingPrice', quantity = 1): InvoiceItem {
   return recalcItem(
@@ -62,22 +24,6 @@ export function itemFromProduct(p: Product, isInterState: boolean, priceField: '
     },
     isInterState
   );
-}
-
-/** Indian financial year label for a date, e.g. 2026-11-04 → "26-27". */
-export function fyLabel(iso: string) {
-  const d = new Date(iso + 'T00:00:00');
-  const start = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
-  return `${String(start).slice(2)}-${String(start + 1).slice(2)}`;
-}
-
-/** Rule 46: max 16 chars, only letters, digits, "-" and "/". */
-export function isValidDocNumber(n: string, maxLen = 16) {
-  return n.length > 0 && n.length <= maxLen && /^[A-Za-z0-9/-]+$/.test(n);
-}
-
-export function daysBetween(fromIso: string, toIso: string) {
-  return Math.round((new Date(toIso + 'T00:00:00').getTime() - new Date(fromIso + 'T00:00:00').getTime()) / 86400000);
 }
 
 export function downloadCsv(filename: string, header: string[], rows: (string | number)[][]) {

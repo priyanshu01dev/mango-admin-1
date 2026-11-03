@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useAdmin } from '../../context/AdminContext';
-import { DAILY_METRICS, RETENTION_COHORTS, PLATFORM_TOTALS, PLAN_COLORS } from '../../data/adminData';
+import { PLAN_COLORS } from '../../data/adminData';
+import { localDate } from '../../utils/gst';
 import { Card, StatTile, Badge, fmtNum, fmtCompactINR } from './ui';
 import { DailyBarChart, MultiLineChart, SegmentBar, rampColor } from './charts';
 import {
@@ -19,18 +20,39 @@ import {
 import type { NavTab } from '../Sidebar';
 
 export const PlatformOverview: React.FC<{ onNavigate: (tab: NavTab) => void }> = ({ onNavigate }) => {
-  const { merchants, subscriptions, tickets, plans, today } = useAdmin();
+  const { merchants, subscriptions, tickets, plans, today, analytics, loading } = useAdmin();
   const [invoiceView, setInvoiceView] = useState<'chart' | 'table'>('chart');
+
+  // last 30 days from the server, missing days filled with 0
+  const DAILY_METRICS = useMemo(() => {
+    const pick = <T extends { _id: string }>(rows: T[] | undefined, d: string) => rows?.find(r => r._id === d);
+    return Array.from({ length: 30 }, (_, i) => {
+      const date = localDate(i - 29);
+      return {
+        date,
+        invoices: pick(analytics?.invoicesPerDay, date)?.invoices ?? 0,
+        signups: pick(analytics?.signupsPerDay, date)?.signups ?? 0,
+        activated: pick(analytics?.activatedPerDay, date)?.activated ?? 0,
+        activeMerchants: pick(analytics?.activeMerchantsPerDay, date)?.activeMerchants ?? 0
+      };
+    });
+  }, [analytics]);
+  const RETENTION_COHORTS = analytics?.retention ?? [];
+  const totals = analytics?.totals ?? { businesses: 0, paid: 0, trials: 0, suspended: 0, users: 0 };
+  const monthLabel = new Date().toLocaleDateString('en-IN', { month: 'short' });
 
   const last = DAILY_METRICS[DAILY_METRICS.length - 1];
   const prev7 = DAILY_METRICS.slice(-14, -7);
   const last7 = DAILY_METRICS.slice(-7);
   const sum = (arr: typeof DAILY_METRICS, k: 'invoices' | 'signups' | 'activated') => arr.reduce((a, d) => a + d[k], 0);
-  const invTrend = ((sum(last7, 'invoices') - sum(prev7, 'invoices')) / sum(prev7, 'invoices')) * 100;
-  const signups30 = sum(DAILY_METRICS, 'signups');
-  const activated30 = sum(DAILY_METRICS, 'activated');
-  const activationRate = (activated30 / signups30) * 100;
-  const d30Retention = RETENTION_COHORTS[RETENTION_COHORTS.length - 2].retention[1];
+  const prevInv = sum(prev7, 'invoices');
+  const invTrend = prevInv ? ((sum(last7, 'invoices') - prevInv) / prevInv) * 100 : null;
+  const signups30 = analytics?.activation.signups30 ?? 0;
+  const activated30 = analytics?.activation.activated30 ?? 0;
+  const activationRate = analytics?.activation.rate ?? 0;
+  // month-1 retention of the most recent cohort that has a month 1
+  const m1Cohort = [...RETENTION_COHORTS].reverse().find(c => c.retention.length > 1);
+  const d30Retention = m1Cohort?.retention[1];
 
   const in7days = useMemo(() => {
     const d = new Date(today + 'T00:00:00');
@@ -46,8 +68,12 @@ export const PlatformOverview: React.FC<{ onNavigate: (tab: NavTab) => void }> =
     return m.usage.users > p.limits.users || (p.limits.eInvoicesPerYear !== null && p.limits.eInvoicesPerYear > 0 && m.usage.eInvoicesThisYear > p.limits.eInvoicesPerYear);
   });
 
-  const planSegments = plans.map(p => ({ label: p.name, value: PLATFORM_TOTALS.planMix[p.id], color: PLAN_COLORS[p.id] }));
-  const maxMonths = Math.max(...RETENTION_COHORTS.map(c => c.retention.length));
+  const planSegments = plans.map(p => ({ label: p.name, value: analytics?.planMix[p.id] ?? 0, color: PLAN_COLORS[p.id] }));
+  const maxMonths = Math.max(1, ...RETENTION_COHORTS.map(c => c.retention.length));
+
+  if (!analytics) {
+    return <div className="text-center text-stone-500 text-xs py-20">{loading ? 'Loading platform analytics…' : 'No analytics available.'}</div>;
+  }
 
   return (
     <div className="space-y-6 pb-12">
@@ -59,15 +85,15 @@ export const PlatformOverview: React.FC<{ onNavigate: (tab: NavTab) => void }> =
             <span className="text-[11px] font-black uppercase tracking-widest text-white/85">Mango Invoice · Platform today</span>
             <div className="text-4xl font-black mt-1 font-mono tracking-tight">{fmtNum(last.invoices)}</div>
             <p className="text-xs font-semibold text-white/90 mt-1">
-              invoices created across {fmtNum(last.activeMerchants)} active merchants · {invTrend >= 0 ? '+' : ''}
-              {invTrend.toFixed(1)}% vs previous week
+              invoices created today across {fmtNum(last.activeMerchants)} merchants
+              {invTrend !== null && ` · ${invTrend >= 0 ? '+' : ''}${invTrend.toFixed(1)}% vs previous week`}
             </p>
           </div>
           <div className="grid grid-cols-3 gap-3 text-center">
             {[
-              { k: 'MRR', v: fmtCompactINR(PLATFORM_TOTALS.mrr) },
-              { k: 'e-Invoices (Nov)', v: fmtNum(PLATFORM_TOTALS.einvoicesThisMonth) },
-              { k: 'e-Way bills (Nov)', v: fmtNum(PLATFORM_TOTALS.ewaybillsThisMonth) }
+              { k: 'MRR', v: fmtCompactINR(analytics.revenue.mrr) },
+              { k: `e-Invoices (${monthLabel})`, v: fmtNum(analytics.thisMonth.eInvoices) },
+              { k: `e-Way bills (${monthLabel})`, v: fmtNum(analytics.thisMonth.eWayBills) }
             ].map(x => (
               <div key={x.k} className="bg-white/15 backdrop-blur-sm rounded-2xl px-3 py-2.5 border border-white/20">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-white/85">{x.k}</div>
@@ -80,10 +106,10 @@ export const PlatformOverview: React.FC<{ onNavigate: (tab: NavTab) => void }> =
 
       {/* KPI tiles */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatTile label="Total merchants" value={fmtNum(PLATFORM_TOTALS.merchants)} sub={`${fmtNum(PLATFORM_TOTALS.trials)} on trial`} icon={Users} />
-        <StatTile label="Paid merchants" value={fmtNum(PLATFORM_TOTALS.paidMerchants)} sub={`${((PLATFORM_TOTALS.paidMerchants / PLATFORM_TOTALS.merchants) * 100).toFixed(1)}% conversion`} icon={IndianRupee} />
-        <StatTile label="Activation (30d)" value={`${activationRate.toFixed(1)}%`} sub="first invoice within 7 days" icon={Sparkles} trend={{ value: '2.1 pts', positive: true }} />
-        <StatTile label="Month-1 retention" value={`${d30Retention}%`} sub={`churn ${PLATFORM_TOTALS.churnRateMonthly}% / mo`} icon={Activity} trend={{ value: '2 pts', positive: true }} />
+        <StatTile label="Total merchants" value={fmtNum(totals.businesses)} sub={`${fmtNum(totals.trials)} on trial · ${fmtNum(totals.suspended)} suspended`} icon={Users} />
+        <StatTile label="Paid merchants" value={fmtNum(totals.paid)} sub={totals.businesses ? `${((totals.paid / totals.businesses) * 100).toFixed(1)}% conversion` : '—'} icon={IndianRupee} />
+        <StatTile label="Activation (30d)" value={`${activationRate.toFixed(1)}%`} sub={`${fmtNum(activated30)} of ${fmtNum(signups30)} made an invoice within 7 days`} icon={Sparkles} />
+        <StatTile label="Month-1 retention" value={d30Retention !== undefined ? `${d30Retention}%` : '—'} sub={m1Cohort ? `${m1Cohort.cohort} cohort` : 'needs a month of data'} icon={Activity} />
       </div>
 
       {/* Invoices per day */}
@@ -91,7 +117,7 @@ export const PlatformOverview: React.FC<{ onNavigate: (tab: NavTab) => void }> =
         <div className="flex items-start justify-between mb-2">
           <div>
             <h3 className="font-extrabold text-sm text-ink">Invoices created per day</h3>
-            <p className="text-[11px] text-stone-500">Last 30 days · all merchants · Sunday and Diwali dips are expected</p>
+            <p className="text-[11px] text-stone-500">Last 30 days · all merchants · created in the app or web</p>
           </div>
           <button
             onClick={() => setInvoiceView(invoiceView === 'chart' ? 'table' : 'chart')}
@@ -153,14 +179,14 @@ export const PlatformOverview: React.FC<{ onNavigate: (tab: NavTab) => void }> =
         <Card className="p-5">
           <h3 className="font-extrabold text-sm text-ink">Plan mix</h3>
           <p className="text-[11px] text-stone-500 mb-4">
-            {fmtNum(PLATFORM_TOTALS.merchants - PLATFORM_TOTALS.trials)} merchants excluding {fmtNum(PLATFORM_TOTALS.trials)} trials
+            {fmtNum(totals.businesses)} businesses by plan (trials counted under their base plan)
           </p>
           <SegmentBar segments={planSegments} />
           <div className="mt-5 pt-4 border-t border-mango-100 space-y-1.5 text-[11px]">
             {plans.filter(p => p.priceYearly > 0).map(p => (
               <div key={p.id} className="flex justify-between">
                 <span className="text-stone-600">{p.name} ARR</span>
-                <span className="font-mono font-bold text-ink">{fmtCompactINR(PLATFORM_TOTALS.planMix[p.id] * p.priceYearly)}</span>
+                <span className="font-mono font-bold text-ink">{fmtCompactINR((analytics.planMix[p.id] ?? 0) * p.priceYearly)}</span>
               </div>
             ))}
           </div>

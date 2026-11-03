@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useBilling } from './BillingContext';
+import { useAuth } from './AuthContext';
+import { get, patch, post, put, errMsg } from '../api/client';
 import {
   PlanConfig,
   Merchant,
@@ -13,45 +15,60 @@ import {
   TicketStatus,
   FeatureFlag,
   Broadcast,
-  Integration,
+  BroadcastSegment,
   ComplianceRules
 } from '../types/admin';
 import {
-  INITIAL_PLANS,
-  INITIAL_MERCHANTS,
-  INITIAL_SUBSCRIPTIONS,
-  INITIAL_COUPONS,
-  INITIAL_ADDONS,
-  INITIAL_TICKETS,
-  INITIAL_FLAGS,
-  INITIAL_BROADCASTS,
-  INITIAL_INTEGRATIONS,
-  INITIAL_COMPLIANCE,
-  ADMIN_TODAY,
-  GST_ON_SUBSCRIPTION,
-  cycleAmount
-} from '../data/adminData';
+  toMerchant,
+  toPlan,
+  fromPlan,
+  toSubscription,
+  toCoupon,
+  toTicket,
+  toFlag,
+  fromFlag,
+  toBroadcast,
+  toCompliance,
+  fromCompliance,
+  toAddOn
+} from '../api/mappers';
+import { localDate } from '../utils/gst';
 
-const nowStamp = () => new Date().toISOString().replace('T', ' ').slice(0, 16);
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type Raw = Record<string, any>;
 
-function usePersisted<T>(key: string, initial: T) {
-  const [value, setValue] = useState<T>(() => {
-    const saved = localStorage.getItem(key);
-    if (!saved) return initial;
-    try {
-      return JSON.parse(saved) as T;
-    } catch {
-      return initial;
-    }
-  });
-  useEffect(() => {
-    localStorage.setItem(key, JSON.stringify(value));
-  }, [key, value]);
-  return [value, setValue] as const;
+export interface IntegrationStatus {
+  key: string;
+  name: string;
+  category: string;
+  provider: string;
+  environment: 'SANDBOX' | 'PRODUCTION';
+  status: 'CONNECTED' | 'NOT_CONFIGURED' | 'ERROR' | 'MOCK';
+  envVars: string[];
+  note: string;
+}
+
+export interface PlatformAnalytics {
+  totals: { businesses: number; paid: number; trials: number; suspended: number; users: number };
+  activation: { signups30: number; activated30: number; rate: number };
+  revenue: { arr: number; mrr: number };
+  planMix: Record<string, number>;
+  invoicesPerDay: { _id: string; invoices: number; value: number }[];
+  signupsPerDay: { _id: string; signups: number }[];
+  activatedPerDay: { _id: string; activated: number }[];
+  activeMerchantsPerDay: { _id: string; activeMerchants: number }[];
+  thisMonth: { eInvoices: number; eWayBills: number };
+  retention: { cohort: string; size: number; retention: number[] }[];
+  openTickets: number;
 }
 
 interface AdminContextType {
+  loading: boolean;
   today: string;
+  reload: () => Promise<void>;
+  analytics: PlatformAnalytics | null;
+  segments: Record<BroadcastSegment, number>;
+
   plans: PlanConfig[];
   updatePlan: (plan: PlanConfig) => void;
 
@@ -84,9 +101,7 @@ interface AdminContextType {
   broadcasts: Broadcast[];
   createBroadcast: (b: Omit<Broadcast, 'id' | 'delivered' | 'opened' | 'createdBy'>) => void;
 
-  integrations: Integration[];
-  updateIntegration: (i: Integration) => void;
-  testIntegration: (key: string) => void;
+  integrations: IntegrationStatus[];
 
   compliance: ComplianceRules;
   updateCompliance: (c: ComplianceRules) => void;
@@ -96,252 +111,167 @@ interface AdminContextType {
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
+const DEFAULT_COMPLIANCE: ComplianceRules = {
+  irpReportingWindowDays: 30,
+  irnCancelWindowHours: 24,
+  eWayBillThreshold: 50000,
+  eWayBillMaxDocAgeDays: 180,
+  eInvoiceAatoThresholdCr: 5,
+  b2cLargeThreshold: 50000,
+  hsnDigitsBelow5Cr: 4,
+  hsnDigitsAbove5Cr: 6,
+  invoiceNumberMaxLength: 16,
+  warnDaysBeforeIrpDeadline: 5
+};
+
+const EMPTY_SEGMENTS = { ALL: 0, FREE: 0, PAID: 0, TRIAL_EXPIRING: 0, PAST_DUE: 0, INACTIVE_14D: 0, EINVOICE_ELIGIBLE: 0 };
+
 export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { showToast, logAudit } = useBilling();
+  const { isPlatformAdmin } = useAuth();
+  const { showToast } = useBilling();
+  const [loading, setLoading] = useState(false);
+  const [analytics, setAnalytics] = useState<PlatformAnalytics | null>(null);
+  const [segments, setSegments] = useState<Record<BroadcastSegment, number>>(EMPTY_SEGMENTS);
+  const [plans, setPlans] = useState<PlanConfig[]>([]);
+  const [merchants, setMerchants] = useState<Merchant[]>([]);
+  const [subscriptions, setSubscriptions] = useState<SubscriptionRecord[]>([]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [addOns, setAddOns] = useState<AddOn[]>([]);
+  const [rawAddOns, setRawAddOns] = useState<Raw[]>([]);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [flags, setFlags] = useState<FeatureFlag[]>([]);
+  const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
+  const [integrations, setIntegrations] = useState<IntegrationStatus[]>([]);
+  const [compliance, setCompliance] = useState<ComplianceRules>(DEFAULT_COMPLIANCE);
 
-  const [plans, setPlans] = usePersisted('mango_admin_plans', INITIAL_PLANS);
-  const [merchants, setMerchants] = usePersisted('mango_admin_merchants', INITIAL_MERCHANTS);
-  const [subscriptions, setSubscriptions] = usePersisted('mango_admin_subscriptions', INITIAL_SUBSCRIPTIONS);
-  const [coupons, setCoupons] = usePersisted('mango_admin_coupons', INITIAL_COUPONS);
-  const [addOns, setAddOns] = usePersisted('mango_admin_addons', INITIAL_ADDONS);
-  const [tickets, setTickets] = usePersisted('mango_admin_tickets', INITIAL_TICKETS);
-  const [flags, setFlags] = usePersisted('mango_admin_flags', INITIAL_FLAGS);
-  const [broadcasts, setBroadcasts] = usePersisted('mango_admin_broadcasts', INITIAL_BROADCASTS);
-  const [integrations, setIntegrations] = usePersisted('mango_admin_integrations', INITIAL_INTEGRATIONS);
-  const [compliance, setCompliance] = usePersisted('mango_admin_compliance', INITIAL_COMPLIANCE);
-
-  const merchantName = (id: string) => merchants.find(m => m.id === id)?.businessName ?? id;
-
-  const updatePlan = (plan: PlanConfig) => {
-    setPlans(prev => prev.map(p => (p.id === plan.id ? plan : p)));
-    showToast(`Plan "${plan.name}" saved`);
-    logAudit('PLAN_UPDATE', `Updated plan ${plan.name}: ₹${plan.priceYearly}/yr, users ${plan.limits.users}, businesses ${plan.limits.businesses}`);
-  };
-
-  const setMerchantStatus = (id: string, status: MerchantStatus, reason?: string) => {
-    setMerchants(prev => prev.map(m => (m.id === id ? { ...m, status } : m)));
-    showToast(`${merchantName(id)} → ${status}`);
-    logAudit('MERCHANT_STATUS', `${merchantName(id)} set to ${status}${reason ? ` (${reason})` : ''}`, status === 'SUSPENDED' ? 'WARNING' : 'SUCCESS');
-  };
-
-  const extendTrial = (id: string, days: number) => {
-    setMerchants(prev =>
-      prev.map(m => {
-        if (m.id !== id) return m;
-        const base = m.trialEndsOn && m.trialEndsOn > ADMIN_TODAY ? m.trialEndsOn : ADMIN_TODAY;
-        const d = new Date(base + 'T00:00:00');
-        d.setDate(d.getDate() + days);
-        const until = d.toISOString().slice(0, 10);
-        return { ...m, status: 'TRIAL', cycle: 'TRIAL', trialEndsOn: until, planValidUntil: until };
-      })
-    );
-    showToast(`Trial extended by ${days} days for ${merchantName(id)}`);
-    logAudit('TRIAL_EXTEND', `Extended trial of ${merchantName(id)} by ${days} days`);
-  };
-
-  const changeMerchantPlan = (id: string, planId: PlanId, cycle: BillingCycle) => {
-    const plan = plans.find(p => p.id === planId)!;
-    const m = merchants.find(x => x.id === id);
-    if (!m) return;
-    const start = new Date(ADMIN_TODAY + 'T00:00:00');
-    const end = new Date(start);
-    if (cycle === 'LIFETIME') end.setFullYear(2099, 11, 31);
-    else end.setFullYear(end.getFullYear() + (cycle === '2Y' ? 2 : cycle === '3Y' ? 3 : 1));
-    const until = end.toISOString().slice(0, 10);
-
-    setMerchants(prev =>
-      prev.map(x => (x.id === id ? { ...x, planId, cycle, status: 'ACTIVE', planValidUntil: until, trialEndsOn: undefined } : x))
-    );
-
-    if (planId !== 'free') {
-      const base = cycleAmount(plan, cycle);
-      const gst = Math.round(base * GST_ON_SUBSCRIPTION) / 100;
-      const record: SubscriptionRecord = {
-        id: 'sub-' + Date.now(),
-        invoiceNo: `MI/SUB/26-27/${String(subscriptions.length + 301).padStart(5, '0')}`,
-        merchantId: id,
-        merchantName: m.businessName,
-        merchantGstin: m.gstin,
-        planId,
-        cycle,
-        baseAmount: base,
-        discount: 0,
-        gstAmount: gst,
-        totalAmount: base + gst,
-        gateway: 'MANUAL',
-        status: 'ACTIVE',
-        startDate: ADMIN_TODAY,
-        renewsOn: until,
-        autoRenew: cycle !== 'LIFETIME',
-        addOns: []
-      };
-      setSubscriptions(prev => [record, ...prev.map(s => (s.merchantId === id && s.status === 'ACTIVE' ? { ...s, status: 'CANCELLED' as const, autoRenew: false } : s))]);
+  const reload = useCallback(async () => {
+    if (!isPlatformAdmin) return;
+    setLoading(true);
+    try {
+      const [a, seg, pl, m, s, c, ad, t, f, b, i, comp] = await Promise.all([
+        get<PlatformAnalytics>('/api/admin/analytics'),
+        get<Record<BroadcastSegment, number>>('/api/admin/segments'),
+        get<Raw[]>('/api/admin/plans'),
+        get<{ items: Raw[] }>('/api/admin/merchants?limit=200'),
+        get<Raw[]>('/api/admin/subscriptions'),
+        get<Raw[]>('/api/admin/coupons'),
+        get<Raw[]>('/api/admin/addons'),
+        get<Raw[]>('/api/admin/tickets'),
+        get<Raw[]>('/api/admin/flags'),
+        get<Raw[]>('/api/admin/broadcasts'),
+        get<IntegrationStatus[]>('/api/admin/integrations'),
+        get<Raw>('/api/admin/compliance')
+      ]);
+      setAnalytics(a);
+      setSegments(seg);
+      setPlans(pl.map(toPlan));
+      setMerchants(m.items.map(toMerchant));
+      setSubscriptions(s.map(toSubscription));
+      setCoupons(c.map(toCoupon));
+      setRawAddOns(ad);
+      setAddOns(ad.map(toAddOn));
+      setTickets(t.map(toTicket));
+      setFlags(f.map(toFlag));
+      setBroadcasts(b.map(toBroadcast));
+      setIntegrations(i);
+      setCompliance(toCompliance(comp));
+    } catch (e) {
+      showToast(errMsg(e));
+    } finally {
+      setLoading(false);
     }
-    showToast(`${m.businessName} moved to ${plan.name} (${cycle})`);
-    logAudit('PLAN_CHANGE', `Admin changed ${m.businessName} plan to ${plan.name} / ${cycle}`);
+  }, [isPlatformAdmin, showToast]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  /** Admin mutation: call the API, toast, reload. */
+  const act = async (fn: () => Promise<unknown>, ok?: string) => {
+    try {
+      await fn();
+      if (ok) showToast(ok);
+      await reload();
+    } catch (e) {
+      showToast(errMsg(e));
+    }
   };
 
-  const updateMerchantNotes = (id: string, notes: string) => {
-    setMerchants(prev => prev.map(m => (m.id === id ? { ...m, notes } : m)));
-    showToast('Internal note saved');
+  const merchantName = (id: string) => merchants.find(m => m.id === id)?.businessName ?? 'Merchant';
+
+  const value: AdminContextType = {
+    loading,
+    today: localDate(),
+    reload,
+    analytics,
+    segments,
+    plans,
+    updatePlan: p => void act(() => put(`/api/admin/plans/${p.id}`, fromPlan(p)), `Plan "${p.name}" saved`),
+
+    merchants,
+    setMerchantStatus: (id, status, reason) => void act(() => post(`/api/admin/merchants/${id}/status`, { status: status === 'TRIAL' ? 'ACTIVE' : status, reason }), `${merchantName(id)} → ${status}`),
+    extendTrial: (id, days) => void act(() => post(`/api/admin/merchants/${id}/extend-trial`, { days }), `Trial extended by ${days} days`),
+    changeMerchantPlan: (id, planId, cycle) =>
+      void act(
+        () => (planId === 'free' ? post(`/api/admin/merchants/${id}/downgrade`) : post(`/api/admin/merchants/${id}/subscription`, { planId, cycle: cycle === 'TRIAL' ? '1Y' : cycle })),
+        planId === 'free' ? 'Moved to Free plan' : 'Plan activated and GST invoice issued'
+      ),
+    updateMerchantNotes: (id, notes) => void act(() => patch(`/api/admin/merchants/${id}/notes`, { notes }), 'Internal note saved'),
+
+    subscriptions,
+    setSubscriptionAutoRenew: (id, autoRenew) => void act(() => patch(`/api/admin/subscriptions/${id}`, { autoRenew }), `Auto-renew ${autoRenew ? 'on' : 'off'}`),
+    cancelSubscription: id => void act(() => patch(`/api/admin/subscriptions/${id}`, { status: 'CANCELLED', autoRenew: false }), 'Subscription cancelled'),
+    retryPayment: () => showToast('Payment gateway (Razorpay / Play Billing) is not connected yet, so a charge cannot be retried.'),
+
+    coupons,
+    addCoupon: c =>
+      void act(
+        () => post('/api/admin/coupons', { code: c.code, type: c.type, value: c.value, appliesTo: c.appliesTo.filter(p => p !== 'free'), maxRedemptions: c.maxRedemptions, validUntil: c.validUntil, description: c.description }),
+        `Coupon ${c.code} created`
+      ),
+    toggleCoupon: id => {
+      const c = coupons.find(x => x.id === id);
+      if (c) void act(() => patch(`/api/admin/coupons/${id}`, { active: !c.active }));
+    },
+
+    addOns,
+    updateAddOn: a =>
+      void act(
+        () => put('/api/admin/addons', rawAddOns.map(x => (x.id === a.id ? { id: a.id, name: a.name, description: a.description, price: a.price, unit: a.unit, active: a.active } : x))),
+        `Add-on "${a.name}" saved`
+      ),
+
+    tickets,
+    replyTicket: (id, text) => void act(() => post(`/api/admin/tickets/${id}/reply`, { text }), 'Reply sent'),
+    setTicketStatus: (id, status) => void act(() => patch(`/api/admin/tickets/${id}`, { status }), `Ticket ${status.replace(/_/g, ' ').toLowerCase()}`),
+    assignTicket: (id, assignee) => void act(() => patch(`/api/admin/tickets/${id}`, { assignee }), `Assigned to ${assignee}`),
+
+    flags,
+    updateFlag: f => void act(() => put(`/api/admin/flags/${f.key}`, fromFlag(f))),
+
+    broadcasts,
+    createBroadcast: b =>
+      void act(
+        () =>
+          post('/api/admin/broadcasts', {
+            title: b.title,
+            message: b.message,
+            channels: b.channels,
+            segment: b.segment,
+            language: b.language,
+            send: b.status === 'SENT' ? 'NOW' : b.status === 'SCHEDULED' ? 'SCHEDULE' : 'DRAFT',
+            scheduledAt: b.status === 'SCHEDULED' && b.scheduledAt ? new Date(b.scheduledAt).toISOString() : undefined
+          }),
+        b.status === 'SENT' ? 'Broadcast queued for delivery' : b.status === 'SCHEDULED' ? 'Broadcast scheduled' : 'Draft saved'
+      ),
+
+    integrations,
+    compliance,
+    updateCompliance: c => void act(() => put('/api/admin/compliance', fromCompliance(c)), 'Compliance rules published'),
+    resetAdminData: () => void reload()
   };
 
-  const setSubscriptionAutoRenew = (id: string, autoRenew: boolean) => {
-    setSubscriptions(prev => prev.map(s => (s.id === id ? { ...s, autoRenew } : s)));
-    showToast(`Auto-renew ${autoRenew ? 'enabled' : 'disabled'}`);
-  };
-
-  const cancelSubscription = (id: string) => {
-    const sub = subscriptions.find(s => s.id === id);
-    setSubscriptions(prev => prev.map(s => (s.id === id ? { ...s, status: 'CANCELLED', autoRenew: false } : s)));
-    showToast(`Subscription ${sub?.invoiceNo} cancelled`);
-    logAudit('SUBSCRIPTION_CANCEL', `Cancelled subscription ${sub?.invoiceNo} of ${sub?.merchantName}`, 'WARNING');
-  };
-
-  const retryPayment = (id: string) => {
-    const sub = subscriptions.find(s => s.id === id);
-    if (!sub) return;
-    setSubscriptions(prev => prev.map(s => (s.id === id ? { ...s, status: 'ACTIVE' } : s)));
-    setMerchants(prev => prev.map(m => (m.id === sub.merchantId && m.status === 'PAST_DUE' ? { ...m, status: 'ACTIVE' } : m)));
-    showToast(`Payment collected for ${sub.merchantName}`);
-    logAudit('PAYMENT_RETRY', `Retried ${sub.gateway} charge for ${sub.invoiceNo} — success`);
-  };
-
-  const addCoupon = (c: Omit<Coupon, 'id' | 'redeemed'>) => {
-    setCoupons(prev => [{ ...c, id: 'cpn-' + Date.now(), redeemed: 0 }, ...prev]);
-    showToast(`Coupon ${c.code} created`);
-    logAudit('COUPON_CREATE', `Created coupon ${c.code} (${c.type === 'PERCENT' ? c.value + '%' : '₹' + c.value})`);
-  };
-
-  const toggleCoupon = (id: string) => {
-    setCoupons(prev => prev.map(c => (c.id === id ? { ...c, active: !c.active } : c)));
-  };
-
-  const updateAddOn = (a: AddOn) => {
-    setAddOns(prev => prev.map(x => (x.id === a.id ? a : x)));
-    showToast(`Add-on "${a.name}" updated`);
-  };
-
-  const replyTicket = (id: string, text: string, author: string) => {
-    setTickets(prev =>
-      prev.map(t =>
-        t.id === id
-          ? {
-              ...t,
-              status: t.status === 'OPEN' ? 'IN_PROGRESS' : t.status,
-              updatedAt: nowStamp(),
-              messages: [...t.messages, { id: 'msg-' + Date.now(), from: 'AGENT', author, text, at: nowStamp() }]
-            }
-          : t
-      )
-    );
-    showToast('Reply sent');
-  };
-
-  const setTicketStatus = (id: string, status: TicketStatus) => {
-    setTickets(prev => prev.map(t => (t.id === id ? { ...t, status, updatedAt: nowStamp() } : t)));
-    showToast(`Ticket marked ${status.replace(/_/g, ' ').toLowerCase()}`);
-  };
-
-  const assignTicket = (id: string, assignee: string) => {
-    setTickets(prev => prev.map(t => (t.id === id ? { ...t, assignee, updatedAt: nowStamp() } : t)));
-    showToast(`Assigned to ${assignee}`);
-  };
-
-  const updateFlag = (flag: FeatureFlag) => {
-    setFlags(prev => prev.map(f => (f.key === flag.key ? { ...flag, updatedAt: ADMIN_TODAY } : f)));
-    logAudit('FEATURE_FLAG', `${flag.key}: ${flag.enabled ? 'ON' : 'OFF'} · ${flag.rollout}% · plans ${flag.plans.join('/')}`);
-  };
-
-  const createBroadcast = (b: Omit<Broadcast, 'id' | 'delivered' | 'opened' | 'createdBy'>) => {
-    const sent = b.status === 'SENT';
-    setBroadcasts(prev => [
-      {
-        ...b,
-        id: 'bc-' + Date.now(),
-        sentAt: sent ? nowStamp() : undefined,
-        delivered: sent ? Math.round(b.recipients * 0.965) : 0,
-        opened: 0,
-        createdBy: 'Super Admin'
-      },
-      ...prev
-    ]);
-    showToast(sent ? `Broadcast sent to ${b.recipients.toLocaleString('en-IN')} merchants` : b.status === 'SCHEDULED' ? 'Broadcast scheduled' : 'Draft saved');
-    logAudit('BROADCAST', `${b.status} "${b.title}" → ${b.segment} via ${b.channels.join(', ')}`);
-  };
-
-  const updateIntegration = (i: Integration) => {
-    setIntegrations(prev => prev.map(x => (x.key === i.key ? i : x)));
-    showToast(`${i.name} settings saved`);
-    logAudit('INTEGRATION_UPDATE', `Updated ${i.name} (${i.provider}, ${i.environment})`);
-  };
-
-  const testIntegration = (key: string) => {
-    setIntegrations(prev =>
-      prev.map(x => (x.key === key ? { ...x, status: 'CONNECTED', lastChecked: nowStamp() } : x))
-    );
-    const i = integrations.find(x => x.key === key);
-    showToast(`${i?.name}: connection OK`);
-  };
-
-  const updateCompliance = (c: ComplianceRules) => {
-    setCompliance(c);
-    showToast('Compliance guardrails saved');
-    logAudit('COMPLIANCE_RULES', 'Updated GST compliance guardrails');
-  };
-
-  const resetAdminData = () => {
-    setPlans(INITIAL_PLANS);
-    setMerchants(INITIAL_MERCHANTS);
-    setSubscriptions(INITIAL_SUBSCRIPTIONS);
-    setCoupons(INITIAL_COUPONS);
-    setAddOns(INITIAL_ADDONS);
-    setTickets(INITIAL_TICKETS);
-    setFlags(INITIAL_FLAGS);
-    setBroadcasts(INITIAL_BROADCASTS);
-    setIntegrations(INITIAL_INTEGRATIONS);
-    setCompliance(INITIAL_COMPLIANCE);
-  };
-
-  return (
-    <AdminContext.Provider
-      value={{
-        today: ADMIN_TODAY,
-        plans,
-        updatePlan,
-        merchants,
-        setMerchantStatus,
-        extendTrial,
-        changeMerchantPlan,
-        updateMerchantNotes,
-        subscriptions,
-        setSubscriptionAutoRenew,
-        cancelSubscription,
-        retryPayment,
-        coupons,
-        addCoupon,
-        toggleCoupon,
-        addOns,
-        updateAddOn,
-        tickets,
-        replyTicket,
-        setTicketStatus,
-        assignTicket,
-        flags,
-        updateFlag,
-        broadcasts,
-        createBroadcast,
-        integrations,
-        updateIntegration,
-        testIntegration,
-        compliance,
-        updateCompliance,
-        resetAdminData
-      }}
-    >
-      {children}
-    </AdminContext.Provider>
-  );
+  return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>;
 };
 
 export const useAdmin = () => {

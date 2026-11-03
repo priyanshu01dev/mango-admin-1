@@ -81,6 +81,7 @@ export interface Invoice {
   notes?: string;
   eInvoiceStatus?: 'NOT_GENERATED' | 'GENERATED' | 'FAILED';
   irnNumber?: string;
+  irnMock?: boolean; // generated in GSP mock mode: NOT a valid IRN
   eWayBillStatus?: 'NOT_GENERATED' | 'GENERATED' | 'EXPIRED';
   eWayBillNumber?: string;
   createdAt: string;

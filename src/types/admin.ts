@@ -166,7 +166,7 @@ export interface Broadcast {
   channels: BroadcastChannel[];
   segment: BroadcastSegment;
   language: 'English' | 'Hindi';
-  status: 'DRAFT' | 'SCHEDULED' | 'SENT';
+  status: 'DRAFT' | 'SCHEDULED' | 'QUEUED' | 'SENT';
   scheduledAt?: string;
   sentAt?: string;
   recipients: number;

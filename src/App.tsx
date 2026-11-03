@@ -25,12 +25,24 @@ import { SupportTickets } from './components/admin/SupportTickets';
 import { FeatureFlags } from './components/admin/FeatureFlags';
 import { Broadcasts } from './components/admin/Broadcasts';
 import { Integrations } from './components/admin/Integrations';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { LoginScreen } from './components/auth/LoginScreen';
+import { CreateBusiness } from './components/auth/CreateBusiness';
 import { CheckCircle2 } from 'lucide-react';
 
+const PLATFORM_TABS: NavTab[] = ['overview', 'merchants', 'subscriptions', 'support', 'flags', 'broadcasts', 'integrations'];
+
 const AppContent: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<NavTab>('overview');
+  const { isPlatformAdmin, activeBusinessId } = useAuth();
+  const [activeTab, setActiveTab] = useState<NavTab>(isPlatformAdmin ? 'overview' : 'dashboard');
   const [isCreateInvoiceModalOpen, setIsCreateInvoiceModalOpen] = useState(false);
-  const { selectedInvoiceForPrint, setSelectedInvoiceForPrint, quickNotification } = useBilling();
+  const { selectedInvoiceForPrint, setSelectedInvoiceForPrint, quickNotification, hasBusiness, loading } = useBilling();
+
+  const isPlatformTab = PLATFORM_TABS.includes(activeTab);
+  // platform pages need a platform role; merchant pages need a business
+  const blockedPlatform = isPlatformTab && !isPlatformAdmin;
+  const needsBusiness = !isPlatformTab && activeTab !== 'api' && !activeBusinessId;
+  const waitingForBusiness = !isPlatformTab && activeTab !== 'api' && !!activeBusinessId && !hasBusiness;
 
   const handleOpenNewInvoice = () => {
     setActiveTab('invoices');
@@ -53,6 +65,10 @@ const AppContent: React.FC = () => {
         {/* Scrollable Main View */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-cream">
           <div className="max-w-7xl mx-auto">
+            {blockedPlatform && <div className="text-center text-stone-500 text-xs py-20">Platform admin access is required for this page.</div>}
+            {needsBusiness && <CreateBusiness />}
+            {waitingForBusiness && <div className="text-center text-stone-500 text-xs py-20">{loading ? 'Loading your business…' : 'Could not load this business.'}</div>}
+            {!blockedPlatform && !needsBusiness && !waitingForBusiness && (<React.Fragment key={activeBusinessId ?? 'platform'}>
             {activeTab === 'overview' && <PlatformOverview onNavigate={setActiveTab} />}
             {activeTab === 'merchants' && <Merchants />}
             {activeTab === 'support' && <SupportTickets />}
@@ -98,6 +114,7 @@ const AppContent: React.FC = () => {
             {activeTab === 'api' && <AndroidApiExplorer />}
 
             {activeTab === 'audit' && <AuditSettings />}
+            </React.Fragment>)}
           </div>
         </main>
       </div>
@@ -124,7 +141,12 @@ const AppContent: React.FC = () => {
   );
 };
 
-export default function App() {
+const Gate: React.FC = () => {
+  const { status } = useAuth();
+  if (status === 'loading') {
+    return <div className="min-h-screen bg-cream flex items-center justify-center text-xs text-stone-500">Loading Mango Invoice…</div>;
+  }
+  if (status === 'anonymous') return <LoginScreen />;
   return (
     <BillingProvider>
       <AdminProvider>
@@ -133,5 +155,13 @@ export default function App() {
         </DocumentsProvider>
       </AdminProvider>
     </BillingProvider>
+  );
+};
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <Gate />
+    </AuthProvider>
   );
 }

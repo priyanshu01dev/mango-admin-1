@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useBilling } from '../context/BillingContext';
 import { useAdmin } from '../context/AdminContext';
 import { useDocuments } from '../context/DocumentsContext';
+import { useAuth } from '../context/AuthContext';
 import { TRANSLATIONS } from '../utils/formatters';
 import {
   Building2,
@@ -12,7 +13,9 @@ import {
   ShieldCheck,
   ChevronDown,
   Sparkles,
-  LayoutGrid
+  RefreshCw,
+  LogOut,
+  Plus
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -34,6 +37,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice }) => {
 
   const { resetAdminData } = useAdmin();
   const { resetDocuments } = useDocuments();
+  const { user, logout, selectBusiness, isPlatformAdmin } = useAuth();
+  const displayName = user?.name || user?.email || user?.phone || (language === 'hi' ? 'एडमिन' : 'Admin');
   const hour = new Date().getHours();
   const greeting =
     language === 'hi'
@@ -64,7 +69,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice }) => {
             />
             <div>
               <div className="text-[11px] font-medium text-stone-500">
-                {greeting}, {language === 'hi' ? 'एडमिन' : 'Admin'}
+                {greeting}, {displayName}{isPlatformAdmin ? ' · Super Admin' : ''}
               </div>
               <div className="flex items-center space-x-1.5">
                 <span className="text-sm font-black text-ink max-w-[220px] truncate">
@@ -100,6 +105,16 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice }) => {
                   </div>
                 </button>
               ))}
+              <button
+                onClick={() => {
+                  selectBusiness('');
+                  setShowBizDropdown(false);
+                }}
+                className="w-full text-left p-2.5 rounded-xl flex items-center space-x-2.5 text-xs text-mango-700 hover:bg-mango-50 font-semibold"
+              >
+                <Plus className="w-4 h-4 shrink-0" />
+                <span>{language === 'hi' ? 'नया बिजनेस जोड़ें' : 'Add a new business'}</span>
+              </button>
             </div>
           )}
         </div>
@@ -158,15 +173,24 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice }) => {
         {/* Grid menu icon */}
         <button
           onClick={() => {
-            if (!window.confirm('Reset all demo data to defaults? Your changes will be lost.')) return;
             resetAdminData();
             resetDocuments();
             resetAllToDefault();
           }}
           className="hidden sm:flex p-2.5 rounded-xl bg-white hover:bg-mango-50 text-stone-700 hover:text-ink border border-mango-100 transition-colors"
-          title="Reset Demo Data / Grid Menu"
+          title="Refresh data from the server"
+          aria-label="Refresh data"
         >
-          <LayoutGrid className="w-4 h-4 text-mango-600" />
+          <RefreshCw className="w-4 h-4 text-mango-600" />
+        </button>
+
+        <button
+          onClick={() => logout()}
+          className="hidden sm:flex p-2.5 rounded-xl bg-white hover:bg-rose-50 text-stone-700 hover:text-rose-700 border border-mango-100 transition-colors"
+          title="Log out"
+          aria-label="Log out"
+        >
+          <LogOut className="w-4 h-4" />
         </button>
 
         {/* Quick Action: New GST Invoice CTA */}

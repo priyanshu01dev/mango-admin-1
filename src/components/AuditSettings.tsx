@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useBilling } from '../context/BillingContext';
 import { InvoiceSettingsPanel } from './InvoiceSettingsPanel';
+import { TeamPanel } from './TeamPanel';
 import { BusinessProfile } from '../types';
 import { formatINR, TRANSLATIONS, INDIAN_STATES } from '../utils/formatters';
 import { Settings, ShieldCheck, Users, FileText, CheckCircle2, AlertTriangle, Building, Save } from 'lucide-react';
@@ -231,70 +232,7 @@ export const AuditSettings: React.FC = () => {
       {/* SUBTAB 2: RBAC */}
       {activeSubTab === 'INVOICE_SETTINGS' && <InvoiceSettingsPanel />}
 
-      {activeSubTab === 'USERS_RBAC' && (
-        <div className="bg-white border border-mango-100 rounded-2xl shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-mango-100">
-            <h3 className="font-extrabold text-sm text-ink">Staff Roles & Permissions (RBAC)</h3>
-            <p className="text-[11px] text-stone-500 mt-0.5">Control access levels for billing operators and accountants</p>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-stone-700">
-              <thead className="bg-mango-50/60 text-stone-500 uppercase text-[10px]">
-                <tr>
-                  <th className="p-3.5 pl-5">Staff Member</th>
-                  <th className="p-3.5">Assigned Role</th>
-                  <th className="p-3.5">Permissions Granted</th>
-                  <th className="p-3.5 text-center">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-mango-100">
-                <tr>
-                  <td className="p-3.5 pl-5">
-                    <div className="font-bold text-ink">Priyanshu Kumar</div>
-                    <div className="text-[10px] text-stone-500">priyanshu@mongo.internal</div>
-                  </td>
-                  <td className="p-3.5">
-                    <span className="bg-emerald-500/20 text-leaf-600 px-2 py-0.5 rounded font-bold text-[10px]">
-                      SUPER_ADMIN
-                    </span>
-                  </td>
-                  <td className="p-3.5 text-stone-700 text-[11px]">Full access, Tax filing, Delete invoice, System settings</td>
-                  <td className="p-3.5 text-center text-leaf-600 font-bold">Active</td>
-                </tr>
-
-                <tr>
-                  <td className="p-3.5 pl-5">
-                    <div className="font-bold text-ink">Rajesh Kumar</div>
-                    <div className="text-[10px] text-stone-500">rajesh.billing@store.in</div>
-                  </td>
-                  <td className="p-3.5">
-                    <span className="bg-indigo-500/20 text-wave-600 px-2 py-0.5 rounded font-bold text-[10px]">
-                      BILLING_MANAGER
-                    </span>
-                  </td>
-                  <td className="p-3.5 text-stone-700 text-[11px]">Create invoices, generate e-way bills, collect payment</td>
-                  <td className="p-3.5 text-center text-leaf-600 font-bold">Active</td>
-                </tr>
-
-                <tr>
-                  <td className="p-3.5 pl-5">
-                    <div className="font-bold text-ink">Sunita Sharma (CA)</div>
-                    <div className="text-[10px] text-stone-500">accounts@auditfirm.com</div>
-                  </td>
-                  <td className="p-3.5">
-                    <span className="bg-teal-500/20 text-teal-600 px-2 py-0.5 rounded font-bold text-[10px]">
-                      ACCOUNTANT
-                    </span>
-                  </td>
-                  <td className="p-3.5 text-stone-700 text-[11px]">View reports, export GSTR JSON, customer balance reconciliation</td>
-                  <td className="p-3.5 text-center text-leaf-600 font-bold">Active</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {activeSubTab === 'USERS_RBAC' && <TeamPanel />}
 
       {/* SUBTAB 3: AUDIT TRAIL */}
       {activeSubTab === 'AUDIT_LOGS' && (

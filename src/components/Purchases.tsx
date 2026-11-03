@@ -162,7 +162,7 @@ const Expenses: React.FC = () => {
       </Card>
 
       <Drawer open={adding} onClose={() => setAdding(false)} title="Add expense">
-        {adding && <ExpenseForm onSave={e => { addExpense(e); setAdding(false); }} />}
+        {adding && <ExpenseForm onSave={async e => { if (await addExpense(e)) setAdding(false); }} />}
       </Drawer>
     </div>
   );
