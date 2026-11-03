@@ -475,3 +475,79 @@ describe('Phase 2: recurring, books, GSTR-2B, public link, Tally, export', () =>
     assert.equal(g.body.exp[0].exp_typ, 'WOPAY');
   });
 });
+
+describe('Phase 2b: godowns, batches, price lists, barcode', () => {
+  let h: Record<string, string> = {};
+  let customerId = '';
+  let supplierId = '';
+  let medId = '';
+  let fanId = '';
+  const day = (n: number) => new Date(Date.now() + 5.5 * 3600e3 + n * 86400e3).toISOString().slice(0, 10);
+
+  test('setup', async () => {
+    const s = await login('9810000040');
+    const b = await request(app).post('/api/businesses').set('Authorization', `Bearer ${s.accessToken}`).send({ name: 'Inventory Pharma', gstin: gstin('07', 'AAACI3333I'), stateCode: '07' });
+    h = { Authorization: `Bearer ${s.accessToken}`, 'X-Business-Id': b.body._id };
+    customerId = (await request(app).post('/api/parties').set(h).send({ type: 'CUSTOMER', name: 'City Chemist', stateCode: '07' })).body._id;
+    supplierId = (await request(app).post('/api/parties').set(h).send({ type: 'SUPPLIER', name: 'Pharma Distributor', gstin: gstin('07', 'AAACD4444D'), stateCode: '07' })).body._id;
+    medId = (await request(app).post('/api/products').set(h).send({ name: 'Paracetamol 650 (strip)', hsnCode: '30049099', taxRate: 12, purchasePrice: 20, sellingPrice: 32, trackBatches: true, barcode: '8901234567890' })).body._id;
+    fanId = (await request(app).post('/api/products').set(h).send({ name: 'Table Fan', hsnCode: '8414', taxRate: 18, purchasePrice: 900, sellingPrice: 1400, openingStock: 10 })).body._id;
+    assert.ok(medId && fanId);
+  });
+
+  test('batch-tracked purchase needs a batch number; batches are created with expiry', async () => {
+    const missing = await request(app).post('/api/documents').set(h).send({ docType: 'PURCHASE_BILL', partyId: supplierId, reference: 'PD/1', items: [{ productId: medId, quantity: 10 }] });
+    assert.equal(missing.status, 400);
+    const r = await request(app).post('/api/documents').set(h).send({
+      docType: 'PURCHASE_BILL', partyId: supplierId, reference: 'PD/1',
+      items: [{ productId: medId, quantity: 10, batchNo: 'b-late', expiryDate: day(300) }, { productId: medId, quantity: 5, batchNo: 'B-SOON', expiryDate: day(20) }, { productId: medId, quantity: 4, batchNo: 'B-OLD', expiryDate: day(-5) }]
+    });
+    assert.equal(r.status, 201, JSON.stringify(r.body));
+    const batches = (await request(app).get(`/api/batches?productId=${medId}`).set(h)).body;
+    assert.equal(batches.length, 3);
+    const exp = (await request(app).get('/api/batches/expiring?days=60').set(h)).body;
+    assert.equal(exp.rows.length, 2);
+    assert.ok(exp.rows.some((x: { expired: boolean }) => x.expired));
+  });
+
+  test('sale picks batches first-expiry-first-out and skips expired stock', async () => {
+    const r = await request(app).post('/api/invoices').set(h).send({ partyId: customerId, items: [{ productId: medId, quantity: 8 }] });
+    assert.equal(r.status, 201, JSON.stringify(r.body));
+    assert.deepEqual(r.body.items[0].batches.map((x: { batchNo: string; quantity: number }) => [x.batchNo, x.quantity]), [['B-SOON', 5], ['B-LATE', 3]]);
+    const tooMuch = await request(app).post('/api/invoices').set(h).send({ partyId: customerId, items: [{ productId: medId, quantity: 10 }] });
+    assert.equal(tooMuch.status, 400, 'only 7 unexpired strips left');
+    const cancel = await request(app).post(`/api/invoices/${r.body._id}/cancel`).set(h).send({ reason: 'Wrong customer' });
+    assert.equal(cancel.status, 200);
+    const batches = (await request(app).get(`/api/batches?productId=${medId}`).set(h)).body;
+    assert.equal(batches.find((x: { batchNo: string }) => x.batchNo === 'B-SOON').quantity, 5, 'cancel restores the same batches');
+  });
+
+  test('godown transfer keeps the total and moves stock', async () => {
+    const shop = await request(app).post('/api/godowns').set(h).send({ name: 'Shop counter' });
+    assert.equal(shop.status, 201);
+    const godowns = (await request(app).get('/api/godowns').set(h)).body;
+    const main = godowns.find((g: { isDefault: boolean }) => g.isDefault);
+    const t = await request(app).post('/api/godowns/transfer').set(h).send({ productId: fanId, fromGodownId: main._id, toGodownId: shop.body._id, quantity: 4 });
+    assert.equal(t.status, 200, JSON.stringify(t.body));
+    const tooMuch = await request(app).post('/api/godowns/transfer').set(h).send({ productId: fanId, fromGodownId: shop.body._id, toGodownId: main._id, quantity: 9 });
+    assert.equal(tooMuch.status, 400);
+    const sale = await request(app).post('/api/invoices').set(h).send({ partyId: customerId, godownId: shop.body._id, items: [{ productId: fanId, quantity: 3 }] });
+    assert.equal(sale.status, 201, JSON.stringify(sale.body));
+    const shopStock = (await request(app).get(`/api/godowns/${shop.body._id}/stock`).set(h)).body.items;
+    assert.equal(shopStock[0].quantity, 1);
+    const fan = (await request(app).get('/api/products').set(h)).body.items.find((p: { _id: string }) => p._id === fanId);
+    assert.equal(fan.stock, 7);
+  });
+
+  test('party price list applies when no price is sent; barcode lookup', async () => {
+    const pl = await request(app).post('/api/price-lists').set(h).send({ name: 'Wholesale', items: [{ productId: fanId, price: 1250 }] });
+    assert.equal(pl.status, 201);
+    await request(app).patch(`/api/parties/${customerId}`).set(h).send({ priceListId: pl.body._id });
+    const resolved = (await request(app).get(`/api/price-lists/resolve?partyId=${customerId}`).set(h)).body;
+    assert.equal(resolved.prices[fanId], 1250);
+    const inv = await request(app).post('/api/invoices').set(h).send({ partyId: customerId, items: [{ productId: fanId, quantity: 1 }] });
+    assert.equal(inv.body.items[0].price, 1250);
+    const scan = await request(app).get('/api/products/by-barcode/8901234567890').set(h);
+    assert.equal(scan.body._id, medId);
+  });
+});

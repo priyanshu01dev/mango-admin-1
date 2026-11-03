@@ -81,6 +81,7 @@ export const toParty = (p: Raw): Party => ({
   openingBalance: p.openingBalance ?? 0,
   currentBalance: p.balance ?? 0,
   creditLimit: p.creditLimit,
+  priceListId: p.priceListId ? String(p.priceListId) : null,
   status: p.status
 });
 
@@ -96,6 +97,7 @@ export const fromParty = (p: Omit<Party, 'id'> | Party) => ({
   stateCode: p.stateCode,
   openingBalance: p.openingBalance || undefined,
   creditLimit: p.creditLimit || undefined,
+  priceListId: p.priceListId === undefined ? undefined : p.priceListId || null,
   status: p.status
 });
 
@@ -112,7 +114,11 @@ export const toProduct = (p: Raw): Product => ({
   taxRate: p.taxRate ?? 18,
   currentStock: p.stock ?? 0,
   minStockAlert: p.minStock ?? 0,
-  status: p.status
+  status: p.status,
+  barcode: p.barcode || undefined,
+  trackBatches: !!p.trackBatches,
+  attributes: p.attributes ?? {},
+  variantOf: p.variantOf ? String(p.variantOf) : null
 });
 
 export const fromProduct = (p: Omit<Product, 'id'> | Product, includeStock: boolean) => ({
@@ -126,7 +132,11 @@ export const fromProduct = (p: Omit<Product, 'id'> | Product, includeStock: bool
   taxRate: p.taxRate,
   minStock: p.minStockAlert,
   status: p.status,
-  ...(includeStock ? { openingStock: p.currentStock } : {})
+  barcode: p.barcode ?? undefined,
+  trackBatches: p.trackBatches,
+  attributes: p.attributes && Object.keys(p.attributes).length ? p.attributes : undefined,
+  variantOf: p.variantOf || undefined,
+  ...(includeStock && !p.trackBatches ? { openingStock: p.currentStock } : {})
 });
 
 // ---------------- documents ----------------
@@ -141,6 +151,9 @@ const toItem = (i: Raw): InvoiceItem => ({
   price: i.price,
   discountPercent: i.discountPercent ?? 0,
   priceIncludesTax: !!i.priceIncludesTax,
+  batchNo: i.batchNo || undefined,
+  expiryDate: i.expiryDate || undefined,
+  batches: i.batches ?? [],
   gstRate: i.gstRate,
   taxableAmount: i.taxableAmount ?? 0,
   cgstAmount: i.cgstAmount ?? 0,
@@ -151,7 +164,7 @@ const toItem = (i: Raw): InvoiceItem => ({
 
 /** Only what the server needs: it recomputes tax and totals itself. */
 export const fromItems = (items: InvoiceItem[]) =>
-  items.map(i => ({ productId: i.productId || undefined, name: i.name, hsnCode: i.hsnCode, unit: i.unit, quantity: i.quantity, price: i.price, discountPercent: i.discountPercent || 0, gstRate: i.gstRate, priceIncludesTax: i.priceIncludesTax || undefined }));
+  items.map(i => ({ productId: i.productId || undefined, name: i.name, hsnCode: i.hsnCode, unit: i.unit, quantity: i.quantity, price: i.price, discountPercent: i.discountPercent || 0, gstRate: i.gstRate, priceIncludesTax: i.priceIncludesTax || undefined, batchNo: i.batchNo || undefined, expiryDate: i.expiryDate || undefined }));
 
 export const toInvoice = (i: Raw): Invoice => ({
   id: id(i),

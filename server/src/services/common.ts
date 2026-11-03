@@ -1,7 +1,7 @@
 import type { ClientSession, Types } from 'mongoose';
 import type { Request } from 'express';
 import { AuditLog, Business, BusinessDoc, Counter, Membership } from '../models/core';
-import { Invoice, Product, StockMovement } from '../models/billing';
+import { Invoice, Product } from '../models/billing';
 import { Plan, PlanDoc, Setting, DEFAULT_COMPLIANCE, ComplianceRules } from '../models/platform';
 import { fyLabel, isValidDocNumber, recalcItem, docTotals, GstLine } from '../../../shared/gst';
 import { badRequest, planLimit } from '../lib/errors';
@@ -133,6 +133,9 @@ export interface LineInput {
   discountPercent?: number;
   gstRate?: number;
   priceIncludesTax?: boolean;
+  batchNo?: string;
+  expiryDate?: string;
+  mfgDate?: string;
 }
 
 /**
@@ -145,7 +148,8 @@ export async function buildLines(
   isInterState: boolean,
   priceField: 'sellingPrice' | 'purchasePrice',
   hsnMinDigits: number,
-  session?: ClientSession
+  session?: ClientSession,
+  priceMap?: Map<string, number>
 ): Promise<GstLine[]> {
   if (!inputs.length) throw badRequest('Add at least one item');
   const ids = inputs.filter(i => i.productId).map(i => i.productId!);
@@ -162,7 +166,8 @@ export async function buildLines(
       hsnCode: hsn,
       quantity: inp.quantity,
       unit: p?.unit ?? inp.unit ?? 'NOS',
-      price: inp.price ?? (p ? (p[priceField] as number) : 0),
+      // explicit price > party price list > item master
+      price: inp.price ?? (p && priceMap?.has(String(p._id)) ? priceMap.get(String(p._id))! : p ? (p[priceField] as number) : 0),
       discountPercent: inp.discountPercent ?? 0,
       priceIncludesTax: inp.priceIncludesTax ?? (inp.price === undefined ? !!p?.priceIncludesTax : false),
       gstRate: p?.taxRate ?? inp.gstRate ?? 18,
@@ -170,8 +175,11 @@ export async function buildLines(
       cgstAmount: 0,
       sgstAmount: 0,
       igstAmount: 0,
-      totalAmount: 0
-    };
+      totalAmount: 0,
+      ...(inp.batchNo ? { batchNo: inp.batchNo.toUpperCase() } : {}),
+      ...(inp.expiryDate ? { expiryDate: inp.expiryDate } : {}),
+      ...(inp.mfgDate ? { mfgDate: inp.mfgDate } : {})
+    } as GstLine;
     if (!line.name) throw badRequest(`Item ${idx + 1}: name is required`);
     if (!(line.quantity > 0)) throw badRequest(`Item ${idx + 1}: quantity must be more than 0`);
     if (line.price < 0) throw badRequest(`Item ${idx + 1}: price cannot be negative`);
@@ -181,29 +189,7 @@ export async function buildLines(
 
 export { docTotals };
 
-/** Applies stock changes and writes the item ledger. Throws if stock would go negative (unless allowed). */
-export async function moveStock(
-  business: BusinessDoc,
-  lines: GstLine[],
-  sign: 1 | -1,
-  ref: { type: string; id: Types.ObjectId; number: string; date: string; reason: string },
-  session: ClientSession
-) {
-  const allowNegative = business.invoiceSettings?.allowNegativeStock;
-  for (const l of lines) {
-    if (!l.productId) continue;
-    const qty = sign * l.quantity;
-    const filter: Record<string, unknown> = { _id: l.productId, businessId: business._id, isService: { $ne: true } };
-    if (qty < 0 && !allowNegative) filter.stock = { $gte: -qty };
-    const updated = await Product.findOneAndUpdate(filter, { $inc: { stock: qty } }, { session, new: true });
-    if (!updated) {
-      const p = await Product.findById(l.productId).session(session).lean();
-      if (p?.isService) continue;
-      throw badRequest(`Not enough stock for "${l.name}" (available ${p?.stock ?? 0} ${l.unit}). Enable negative stock in settings to bill anyway.`);
-    }
-    await StockMovement.create([{ businessId: business._id, productId: l.productId, quantity: qty, reason: ref.reason, refType: ref.type, refId: ref.id, refNumber: ref.number, date: ref.date }], { session });
-  }
-}
+export { moveStock } from './stock';
 
 export async function bumpFirstInvoice(businessId: Types.ObjectId, session: ClientSession) {
   await Business.updateOne({ _id: businessId, firstInvoiceAt: null }, { firstInvoiceAt: new Date() }, { session });

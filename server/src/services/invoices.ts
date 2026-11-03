@@ -7,6 +7,8 @@ import { r2, isValidDocNumber, isValidGstin, invoiceTotals } from '../../../shar
 import { badRequest, conflict, notFound } from '../lib/errors';
 import { todayIST } from '../lib/dates';
 import { assertLimit, audit, buildLines, bumpFirstInvoice, compliance, docTotals, LineInput, moveStock, nextNumber } from './common';
+import { allocateBatches, priceMapFor, StockLine } from './stock';
+import { Godown } from '../models/inventory';
 
 export interface CreateInvoiceInput {
   partyId?: string;
@@ -21,6 +23,7 @@ export interface CreateInvoiceInput {
   reverseCharge?: boolean;
   notes?: string;
   sourceDoc?: string;
+  godownId?: string;
   supplyType?: 'REGULAR' | 'EXPORT_WPAY' | 'EXPORT_WOPAY' | 'SEZ_WPAY' | 'SEZ_WOPAY' | 'DEEMED_EXPORT';
   exportDetails?: { currency?: string; exchangeRate?: number; portCode?: string; shippingBillNo?: string; shippingBillDate?: string; lutNumber?: string };
   billDiscount?: number;
@@ -42,12 +45,14 @@ export async function createInvoice(req: Request, input: CreateInvoiceInput, out
 
   const run = async (session: ClientSession) => {
     // ---- buyer ----
+    let priceListId: unknown = null;
     let buyer: { partyId?: unknown; name: string; gstin: string; phone: string; address: string; stateCode: string };
     if (input.partyId) {
       const party = await Party.findOne({ _id: input.partyId, businessId: business._id }).session(session).lean();
       if (!party) throw notFound('Customer');
       if (party.type !== 'CUSTOMER') throw badRequest('Invoices can only be raised to customers');
       if (party.status === 'BLOCKED') throw badRequest(`${party.name} is blocked`);
+      priceListId = party.priceListId;
       buyer = { partyId: party._id, name: party.name, gstin: party.gstin ?? '', phone: party.phone ?? '', address: party.billingAddress ?? '', stateCode: party.stateCode };
     } else if (input.walkIn) {
       buyer = { name: input.walkIn.name, gstin: (input.walkIn.gstin ?? '').toUpperCase(), phone: input.walkIn.phone ?? '', address: input.walkIn.address ?? '', stateCode: input.walkIn.stateCode };
@@ -82,7 +87,8 @@ export async function createInvoice(req: Request, input: CreateInvoiceInput, out
       isInterState,
       'sellingPrice',
       hsnMin(business, isB2B, rules),
-      session
+      session,
+      await priceMapFor(priceListId, session)
     );
     if (billOfSupply) lines.forEach(l => Object.assign(l, { gstRate: 0, cgstAmount: 0, sgstAmount: 0, igstAmount: 0, totalAmount: l.taxableAmount }));
     // charges (freight, packing…) are taxed at the rate of the main supply unless given
@@ -101,6 +107,9 @@ export async function createInvoice(req: Request, input: CreateInvoiceInput, out
         })()
       : invoiceTotals(lines, isInterState, extras);
     const { lines: finalLines, charges, ...t } = computed;
+    if (input.godownId && !(await Godown.exists({ _id: input.godownId, businessId: business._id }).session(session))) throw badRequest('Godown not found');
+    // pick batches (first-expiry-first-out) before saving so the invoice records which batches were sold
+    await allocateBatches(business._id, finalLines as StockLine[], session);
     const endorsement =
       supplyType === 'REGULAR' || supplyType === 'DEEMED_EXPORT'
         ? ''
@@ -140,6 +149,7 @@ export async function createInvoice(req: Request, input: CreateInvoiceInput, out
           partyAddress: buyer.address,
           partyStateCode: buyer.stateCode,
           placeOfSupply: buyer.stateCode,
+          godownId: input.godownId || undefined,
           supplyType,
           exportDetails: {
             currency: input.exportDetails?.currency ?? (isExport ? 'INR' : ''),
@@ -170,7 +180,7 @@ export async function createInvoice(req: Request, input: CreateInvoiceInput, out
       { session }
     );
 
-    await moveStock(business, finalLines, -1, { type: 'INVOICE', id: inv._id, number, date, reason: 'Sale' }, session);
+    await moveStock(business, finalLines, -1, { type: 'INVOICE', id: inv._id, number, date, reason: 'Sale', godownId: input.godownId }, session);
 
     if (buyer.partyId) await Party.updateOne({ _id: buyer.partyId }, { $inc: { balance: t.grandTotal } }, { session });
     if (paid > 0) {
@@ -204,7 +214,7 @@ export async function cancelInvoice(req: Request, invoiceId: string, reason: str
       throw conflict('Credit notes exist against this invoice; cancel them first');
     }
 
-    await moveStock(business, inv.items as never, 1, { type: 'INVOICE_CANCEL', id: inv._id, number: inv.number, date: todayIST(), reason: 'Invoice cancelled' }, session);
+    await moveStock(business, inv.items as never, 1, { type: 'INVOICE_CANCEL', id: inv._id, number: inv.number, date: todayIST(), reason: 'Invoice cancelled', godownId: inv.godownId }, session);
     // remove the whole invoice value from the receivable; any payment already taken becomes an advance
     if (inv.partyId) await Party.updateOne({ _id: inv.partyId }, { $inc: { balance: -inv.grandTotal } }, { session });
 

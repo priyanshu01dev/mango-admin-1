@@ -19,6 +19,8 @@ import { DocumentsProvider } from './context/DocumentsContext';
 import { SalesDocuments } from './components/SalesDocuments';
 import { Purchases } from './components/Purchases';
 import { BusinessReports } from './components/BusinessReports';
+import { InventoryHub } from './components/InventoryHub';
+import { PosScreen } from './components/PosScreen';
 import { PlatformOverview } from './components/admin/PlatformOverview';
 import { Merchants } from './components/admin/Merchants';
 import { SupportTickets } from './components/admin/SupportTickets';
@@ -101,7 +103,9 @@ const AppContent: React.FC = () => {
 
             {activeTab === 'eway' && <EWayBillEInvoice />}
 
-            {activeTab === 'inventory' && <Inventory />}
+            {activeTab === 'inventory' && <InventoryHub />}
+
+            {activeTab === 'pos' && <PosScreen />}
 
             {activeTab === 'parties' && <CustomersSuppliers />}
 

@@ -25,7 +25,8 @@ import {
   Plug,
   FileStack,
   ShoppingCart,
-  BarChart3
+  BarChart3,
+  ScanBarcode
 } from 'lucide-react';
 
 export type NavTab =
@@ -39,6 +40,7 @@ export type NavTab =
   | 'dashboard'
   | 'invoices'
   | 'quotations'
+  | 'pos'
   | 'salesdocs'
   | 'purchases'
   | 'reports'
@@ -96,6 +98,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
       items: [
         { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard },
         { id: 'invoices', label: t.invoices, icon: Receipt, badge: unpaidCount || undefined, badgeTone: 'rose' },
+        { id: 'pos', label: hi ? 'POS काउंटर बिलिंग' : 'POS Counter', icon: ScanBarcode },
         { id: 'quotations', label: t.quotations, icon: FileSpreadsheet },
         { id: 'salesdocs', label: hi ? 'प्रोफॉर्मा, चालान व क्रेडिट नोट' : 'Challans & Notes', icon: FileStack },
         { id: 'purchases', label: hi ? 'खरीद व खर्च' : 'Purchases & Expenses', icon: ShoppingCart, badge: openBills || undefined, badgeTone: 'rose' },

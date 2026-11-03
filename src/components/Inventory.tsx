@@ -42,6 +42,11 @@ export const Inventory: React.FC = () => {
   const [taxRate, setTaxRate] = useState(18);
   const [currentStock, setCurrentStock] = useState(25);
   const [minStockAlert, setMinStockAlert] = useState(10);
+  const [barcode, setBarcode] = useState('');
+  const [trackBatches, setTrackBatches] = useState(false);
+  const [size, setSize] = useState('');
+  const [colour, setColour] = useState('');
+  const [variantOf, setVariantOf] = useState('');
 
   const categories = ['ALL', ...Array.from(new Set(products.map(p => p.category)))];
 
@@ -74,9 +79,16 @@ export const Inventory: React.FC = () => {
       taxRate,
       currentStock,
       minStockAlert,
-      status: 'ACTIVE'
+      status: 'ACTIVE',
+      barcode: barcode || undefined,
+      trackBatches,
+      attributes: { ...(size ? { Size: size } : {}), ...(colour ? { Colour: colour } : {}) },
+      variantOf: variantOf || null
     });
     setIsAddModalOpen(false);
+    setBarcode('');
+    setSize('');
+    setColour('');
     // Reset form
     setName('');
     setSku('');
@@ -379,6 +391,40 @@ export const Inventory: React.FC = () => {
                 </div>
 
                 <div>
+                  <label className="block text-[11px] text-stone-500 mb-1">Barcode (EAN / UPC / own)</label>
+                  <input
+                    type="text"
+                    value={barcode}
+                    onChange={e => setBarcode(e.target.value.replace(/[^A-Za-z0-9-]/g, ''))}
+                    placeholder="Scan or type"
+                    className="w-full bg-mango-50/60 border border-mango-200/70 rounded-lg p-2 font-mono text-ink"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-stone-500 mb-1">Variant of (size / colour)</label>
+                  <select value={variantOf} onChange={e => setVariantOf(e.target.value)} className="w-full bg-mango-50/60 border border-mango-200/70 rounded-lg p-2 text-ink">
+                    <option value="">— Not a variant —</option>
+                    {products.filter(p => !p.variantOf).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-stone-500 mb-1">Size</label>
+                  <input value={size} onChange={e => setSize(e.target.value)} placeholder="M / 42 / 1 kg" className="w-full bg-mango-50/60 border border-mango-200/70 rounded-lg p-2 text-ink" />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-stone-500 mb-1">Colour</label>
+                  <input value={colour} onChange={e => setColour(e.target.value)} placeholder="Red" className="w-full bg-mango-50/60 border border-mango-200/70 rounded-lg p-2 text-ink" />
+                </div>
+
+                <label className="col-span-2 flex items-center gap-2 text-[11px] text-stone-700 font-semibold">
+                  <input type="checkbox" checked={trackBatches} onChange={e => setTrackBatches(e.target.checked)} />
+                  Track batch & expiry (pharma, FMCG). Stock comes in through purchase bills with a batch number.
+                </label>
+
+                <div>
                   <label className="block text-[11px] text-stone-500 mb-1">HSN / SAC Code</label>
                   <input
                     type="text"
@@ -463,6 +509,7 @@ export const Inventory: React.FC = () => {
                 <div>
                   <label className="block text-[11px] text-stone-500 mb-1">Initial Stock</label>
                   <input
+                    disabled={trackBatches}
                     type="number"
                     min="0"
                     value={currentStock}

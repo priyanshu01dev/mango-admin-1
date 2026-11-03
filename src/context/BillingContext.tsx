@@ -251,6 +251,7 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
             amountPaid: inv.amountPaid || undefined,
             paymentMode: inv.amountPaid ? 'UPI' : undefined,
             notes: inv.notes || undefined,
+            godownId: inv.godownId || undefined,
             supplyType: inv.supplyType && inv.supplyType !== 'REGULAR' ? inv.supplyType : undefined,
             exportDetails: inv.supplyType && inv.supplyType !== 'REGULAR' ? inv.exportDetails : undefined,
             billDiscount: inv.billDiscount || undefined,

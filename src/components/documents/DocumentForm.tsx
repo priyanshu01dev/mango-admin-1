@@ -178,6 +178,18 @@ export const DocumentForm: React.FC<{ docType: DocType; onDone: () => void }> = 
                     {bizProducts.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                   <div className="text-[9px] text-stone-400 mt-0.5 font-mono">HSN {l.hsnCode} · {l.unit}</div>
+                  {bizProducts.find(p => p.id === l.productId)?.trackBatches && (docType === 'PURCHASE_BILL' || docType === 'PURCHASE_ORDER' || docType === 'CREDIT_NOTE') && (
+                    <div className="flex gap-1 mt-1">
+                      <input
+                        className={`${inputCls} py-1 font-mono uppercase`}
+                        placeholder={docType === 'CREDIT_NOTE' ? 'Batch (RETURNS)' : 'Batch no.*'}
+                        required={docType === 'PURCHASE_BILL'}
+                        value={l.batchNo ?? ''}
+                        onChange={e => updateLine(idx, { batchNo: e.target.value.toUpperCase() })}
+                      />
+                      <input type="date" className={`${inputCls} py-1`} title="Expiry date" value={l.expiryDate ?? ''} onChange={e => updateLine(idx, { expiryDate: e.target.value })} />
+                    </div>
+                  )}
                 </td>
                 <td className="p-1.5"><input type="number" min={1} className={`${inputCls} py-1.5 font-mono`} value={l.quantity} onChange={e => updateLine(idx, { quantity: Math.max(0, Number(e.target.value)) })} /></td>
                 <td className="p-1.5"><input type="number" min={0} step="0.01" className={`${inputCls} py-1.5 font-mono`} value={l.price} onChange={e => updateLine(idx, { price: Math.max(0, Number(e.target.value)) })} /></td>

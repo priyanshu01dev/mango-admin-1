@@ -13,6 +13,7 @@ import { reportsRouter } from './routes/reports';
 import { supportRouter } from './routes/support';
 import { adminRouter } from './routes/admin';
 import { phase2Router } from './routes/phase2';
+import { inventoryRouter } from './routes/inventory';
 import { publicRouter } from './routes/public';
 
 export function createApp() {
@@ -40,6 +41,7 @@ export function createApp() {
   scoped.use(mastersRouter);
   scoped.use(txRouter);
   scoped.use(phase2Router);
+  scoped.use(inventoryRouter);
   scoped.use('/reports', reportsRouter);
   app.use('/api', scoped);
 

@@ -24,7 +24,7 @@ import {
   Copy,
   Link2
 } from 'lucide-react';
-import { post, errMsg } from '../api/client';
+import { get, post, errMsg } from '../api/client';
 
 interface InvoicesProps {
   onSelectInvoiceForPrint: (inv: Invoice) => void;
@@ -111,6 +111,24 @@ export const Invoices: React.FC<InvoicesProps> = ({
   const [exchangeRate, setExchangeRate] = useState(0);
   const [portCode, setPortCode] = useState('');
   const [shippingBillNo, setShippingBillNo] = useState('');
+  const [godownId, setGodownId] = useState('');
+  const [godowns, setGodowns] = useState<{ _id: string; name: string; isDefault: boolean }[]>([]);
+  const [partyPrices, setPartyPrices] = useState<{ name: string | null; prices: Record<string, number> }>({ name: null, prices: {} });
+  useEffect(() => {
+    if (!isCreateModalOpen) return;
+    get<{ _id: string; name: string; isDefault: boolean }[]>('/api/godowns').then(setGodowns).catch(() => setGodowns([]));
+  }, [isCreateModalOpen]);
+  useEffect(() => {
+    if (!selectedCustomerId) return setPartyPrices({ name: null, prices: {} });
+    get<{ priceList: string | null; prices: Record<string, number> }>(`/api/price-lists/resolve?partyId=${selectedCustomerId}`)
+      .then(r => {
+        setPartyPrices({ name: r.priceList, prices: r.prices });
+        // re-price lines already in the form
+        if (r.priceList) setFormItems(prev => prev.map(it => (it.productId && r.prices[it.productId] !== undefined ? recalcItem({ ...it, price: r.prices[it.productId] }, isInterState) : it)));
+      })
+      .catch(() => setPartyPrices({ name: null, prices: {} }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCustomerId]);
 
   // Dynamic invoice items
   const [formItems, setFormItems] = useState<InvoiceItem[]>([
@@ -160,7 +178,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
         if (prod) {
           item.name = prod.name;
           item.hsnCode = prod.hsnCode;
-          item.price = prod.sellingPrice;
+          item.price = partyPrices.prices[prod.id] ?? prod.sellingPrice;
           item.gstRate = prod.taxRate;
           item.unit = prod.unit;
         }
@@ -289,6 +307,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
       notes,
       eInvoiceStatus: 'NOT_GENERATED',
       eWayBillStatus: 'NOT_GENERATED',
+      godownId: godownId || undefined,
       supplyType,
       exportDetails: { lutNumber, currency, exchangeRate: exchangeRate || undefined, portCode, shippingBillNo },
       billDiscount,
@@ -702,6 +721,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
                         </option>
                       ))}
                     </select>
+                    {partyPrices.name && <p className="text-[10px] text-leaf-700 font-semibold mt-0.5">Price list: {partyPrices.name}</p>}
                   </div>
 
                   <div>
@@ -919,6 +939,14 @@ export const Invoices: React.FC<InvoicesProps> = ({
                     </button>
                     {showExtras && (
                       <div className="grid grid-cols-2 gap-2 mt-2">
+                        {godowns.length > 1 && (
+                          <label className="text-[10px] text-stone-500 col-span-2">Dispatch from godown
+                            <select value={godownId} onChange={e => setGodownId(e.target.value)} className="w-full bg-white border border-mango-200/70 rounded p-1.5 text-ink">
+                              <option value="">{godowns.find(g => g.isDefault)?.name ?? 'Default'} (default)</option>
+                              {godowns.filter(g => !g.isDefault).map(g => <option key={g._id} value={g._id}>{g.name}</option>)}
+                            </select>
+                          </label>
+                        )}
                         <label className="text-[10px] text-stone-500 col-span-2">Type of supply
                           <select value={supplyType} onChange={e => setSupplyType(e.target.value as NonNullable<Invoice['supplyType']>)} className="w-full bg-white border border-mango-200/70 rounded p-1.5 text-ink">
                             <option value="REGULAR">Regular (domestic)</option>

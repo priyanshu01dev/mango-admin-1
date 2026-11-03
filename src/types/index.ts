@@ -45,6 +45,9 @@ export interface InvoiceItem {
   price: number; // Unit selling price before tax
   discountPercent: number; // e.g. 5%
   priceIncludesTax?: boolean; // price entered including GST
+  batchNo?: string;
+  expiryDate?: string;
+  batches?: { batchNo: string; quantity: number; expiryDate?: string }[];
   gstRate: number; // 0, 5, 12, 18, 28
   taxableAmount: number;
   cgstAmount: number;
@@ -83,6 +86,7 @@ export interface Invoice {
   eInvoiceStatus?: 'NOT_GENERATED' | 'GENERATED' | 'FAILED';
   irnNumber?: string;
   irnMock?: boolean; // generated in GSP mock mode: NOT a valid IRN
+  godownId?: string;
   supplyType?: 'REGULAR' | 'EXPORT_WPAY' | 'EXPORT_WOPAY' | 'SEZ_WPAY' | 'SEZ_WOPAY' | 'DEEMED_EXPORT';
   exportDetails?: { currency?: string; exchangeRate?: number; foreignValue?: number; portCode?: string; shippingBillNo?: string; shippingBillDate?: string; lutNumber?: string };
   billDiscount?: number;
@@ -133,6 +137,10 @@ export interface Product {
   currentStock: number;
   minStockAlert: number;
   status: 'ACTIVE' | 'INACTIVE';
+  barcode?: string;
+  trackBatches?: boolean;
+  attributes?: Record<string, string>;
+  variantOf?: string | null;
 }
 
 export interface Party {
@@ -151,6 +159,7 @@ export interface Party {
   openingBalance: number;
   currentBalance: number; // positive = receivable, negative = payable
   creditLimit?: number;
+  priceListId?: string | null;
   status: 'ACTIVE' | 'BLOCKED';
 }
 

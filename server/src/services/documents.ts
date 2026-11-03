@@ -7,6 +7,8 @@ import { badRequest, conflict, notFound } from '../lib/errors';
 import { todayIST } from '../lib/dates';
 import { audit, buildLines, compliance, docTotals, LineInput, moveStock, nextNumber } from './common';
 import { createInvoice } from './invoices';
+import { allocateBatches, priceMapFor, StockLine } from './stock';
+import { Godown } from '../models/inventory';
 
 export const PURCHASE_TYPES: DocType[] = ['PURCHASE_ORDER', 'PURCHASE_BILL', 'DEBIT_NOTE'];
 export const SALES_TYPES: DocType[] = ['QUOTATION', 'PROFORMA', 'SALES_ORDER', 'DELIVERY_CHALLAN', 'CREDIT_NOTE'];
@@ -24,6 +26,7 @@ export interface CreateDocInput {
   itcEligible?: boolean;
   vehicleNumber?: string;
   notes?: string;
+  godownId?: string;
   amountPaid?: number; // PURCHASE_BILL paid at the time of entry
   paymentMode?: 'CASH' | 'UPI' | 'NEFT_RTGS' | 'CHEQUE' | 'CARD';
 }
@@ -51,7 +54,11 @@ export async function createDocument(req: Request, input: CreateDocInput, outerS
 
     const date = input.date ?? todayIST();
     const isInterState = party.stateCode !== business.stateCode;
-    const lines = await buildLines(business._id, input.items, isInterState, purchase ? 'purchasePrice' : 'sellingPrice', 1, session);
+    const lines = (await buildLines(business._id, input.items, isInterState, purchase ? 'purchasePrice' : 'sellingPrice', 1, session, purchase ? undefined : await priceMapFor(party.priceListId, session))) as StockLine[];
+    if (input.godownId && !(await Godown.exists({ _id: input.godownId, businessId: business._id }).session(session))) throw badRequest('Godown not found');
+    // returned goods go back into a "RETURNS" batch unless the batch is given
+    if (input.docType === 'CREDIT_NOTE') lines.forEach(l => { if (!l.batchNo) l.batchNo = 'RETURNS'; });
+    if (input.docType === 'DEBIT_NOTE') await allocateBatches(business._id, lines, session);
     const t = docTotals(lines, business.invoiceSettings?.roundOff ?? true);
     const restock = input.restock ?? true;
 
@@ -100,6 +107,7 @@ export async function createDocument(req: Request, input: CreateDocInput, outerS
           partyPhone: party.phone,
           partyAddress: party.billingAddress,
           partyStateCode: party.stateCode,
+          godownId: input.godownId || undefined,
           isInterState,
           items: lines,
           ...t,
@@ -118,7 +126,7 @@ export async function createDocument(req: Request, input: CreateDocInput, outerS
     );
 
     const fx = effects(input.docType, restock);
-    if (fx.stock) await moveStock(business, lines, fx.stock, { type: input.docType, id: doc._id, number, date, reason: input.docType.replace(/_/g, ' ').toLowerCase() }, session);
+    if (fx.stock) await moveStock(business, lines, fx.stock, { type: input.docType, id: doc._id, number, date, reason: input.docType.replace(/_/g, ' ').toLowerCase(), godownId: input.godownId }, session);
     if (fx.balanceSign) await Party.updateOne({ _id: party._id }, { $inc: { balance: fx.balanceSign * t.grandTotal } }, { session });
     if (paid > 0) {
       await Party.updateOne({ _id: party._id }, { $inc: { balance: paid } }, { session });
@@ -151,7 +159,7 @@ export async function cancelDocument(req: Request, id: string, reason: string) {
 
     const fx = effects(doc.docType as DocType, doc.restock ?? true);
     if (fx.stock) {
-      await moveStock(business, doc.items as never, (fx.stock * -1) as 1 | -1, { type: `${doc.docType}_CANCEL`, id: doc._id, number: doc.number, date: todayIST(), reason: 'Cancelled' }, session);
+      await moveStock(business, doc.items as never, (fx.stock * -1) as 1 | -1, { type: `${doc.docType}_CANCEL`, id: doc._id, number: doc.number, date: todayIST(), reason: 'Cancelled', godownId: doc.godownId }, session);
     }
     if (fx.balanceSign) await Party.updateOne({ _id: doc.partyId }, { $inc: { balance: -fx.balanceSign * doc.grandTotal } }, { session });
     if (doc.docType === 'CREDIT_NOTE') {
@@ -191,7 +199,8 @@ export async function convertToInvoice(req: Request, id: string) {
       req,
       {
         partyId: String(doc.partyId),
-        items: doc.items.map(i => ({ productId: i.productId ? String(i.productId) : undefined, name: i.name, hsnCode: i.hsnCode, unit: i.unit ?? undefined, quantity: i.quantity, price: i.price, discountPercent: i.discountPercent ?? 0, gstRate: i.gstRate })),
+        items: doc.items.map(i => ({ productId: i.productId ? String(i.productId) : undefined, name: i.name, hsnCode: i.hsnCode, unit: i.unit ?? undefined, quantity: i.quantity, price: i.price, discountPercent: i.discountPercent ?? 0, gstRate: i.gstRate, batchNo: i.batchNo ?? undefined })),
+        godownId: doc.godownId ? String(doc.godownId) : undefined,
         notes: `Against ${doc.number}`,
         sourceDoc: doc.number
       },
@@ -217,7 +226,8 @@ export async function convertPoToBill(req: Request, id: string, supplierBillNo: 
         docType: 'PURCHASE_BILL',
         partyId: String(po.partyId),
         reference: supplierBillNo,
-        items: po.items.map(i => ({ productId: i.productId ? String(i.productId) : undefined, name: i.name, hsnCode: i.hsnCode, unit: i.unit ?? undefined, quantity: i.quantity, price: i.price, discountPercent: i.discountPercent ?? 0, gstRate: i.gstRate })),
+        items: po.items.map(i => ({ productId: i.productId ? String(i.productId) : undefined, name: i.name, hsnCode: i.hsnCode, unit: i.unit ?? undefined, quantity: i.quantity, price: i.price, discountPercent: i.discountPercent ?? 0, gstRate: i.gstRate, batchNo: i.batchNo ?? undefined, expiryDate: i.expiryDate ?? undefined })),
+        godownId: po.godownId ? String(po.godownId) : undefined,
         notes: `Against ${po.number}`
       },
       session

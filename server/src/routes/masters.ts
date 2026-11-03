@@ -4,6 +4,7 @@ import { ah, badRequest, conflict, notFound } from '../lib/errors';
 import { Invoice, Party, Payment, Product, StockMovement, TradeDocument } from '../models/billing';
 import { allow, MANAGE, READ, SELL } from '../middleware/auth';
 import { audit } from '../services/common';
+import { allocateBatches, moveStock } from '../services/stock';
 import { inTransaction } from '../db';
 import { isValidGstin, GST_STATES } from '../../../shared/gst';
 import { todayIST } from '../lib/dates';
@@ -33,6 +34,7 @@ const partySchema = z.object({
   openingBalance: z.number().optional(),
   creditLimit: z.number().min(0).optional(),
   creditDays: z.number().int().min(0).max(365).optional(),
+  priceListId: z.string().nullable().optional(),
   status: z.enum(['ACTIVE', 'BLOCKED']).optional()
 });
 
@@ -125,6 +127,10 @@ mastersRouter.get(
 const productSchema = z.object({
   name: z.string().min(1).max(160),
   sku: z.string().max(40).optional(),
+  barcode: z.string().regex(/^[A-Za-z0-9-]{4,30}$/, 'Barcode: 4–30 letters/digits').or(z.literal('')).optional(),
+  variantOf: z.string().nullable().optional(),
+  attributes: z.record(z.string(), z.string().max(40)).optional(),
+  trackBatches: z.boolean().optional(),
   hsnCode: z.string().regex(/^\d{4,8}$/, 'HSN/SAC must be 4–8 digits'),
   category: z.string().max(60).optional(),
   unit: z.string().max(10).optional(),
@@ -158,6 +164,7 @@ mastersRouter.post(
   allow(...MANAGE),
   ah(async (req, res) => {
     const { openingStock, ...body } = productSchema.parse(req.body);
+    if (body.trackBatches && openingStock) throw badRequest('Batch-tracked items get stock through a purchase bill (or adjustment) with a batch number and expiry');
     if (body.mrp && body.sellingPrice && !body.priceIncludesTax && body.sellingPrice * (1 + body.taxRate / 100) > body.mrp + 0.01) {
       throw badRequest('Selling price including GST is above MRP');
     }
@@ -187,19 +194,37 @@ mastersRouter.post(
   '/products/:id/adjust',
   allow(...MANAGE),
   ah(async (req, res) => {
-    const { quantity, reason } = z.object({ quantity: z.number().refine(n => n !== 0, 'Quantity cannot be 0'), reason: z.string().min(2).max(120) }).parse(req.body);
-    const p = await inTransaction(async session => {
-      const filter: Record<string, unknown> = { _id: req.params.id, businessId: req.business!._id };
-      if (quantity < 0) filter.stock = { $gte: -quantity };
-      const updated = await Product.findOneAndUpdate(filter, { $inc: { stock: quantity } }, { new: true, session });
-      if (!updated) {
-        if (await Product.exists({ _id: req.params.id, businessId: req.business!._id })) throw conflict('Not enough stock for this adjustment');
-        throw notFound('Product');
-      }
-      await StockMovement.create([{ businessId: req.business!._id, productId: updated._id, quantity, reason: `Adjustment: ${reason}`, date: todayIST() }], { session });
-      return updated;
+    const { quantity, reason, godownId, batchNo, expiryDate } = z
+      .object({
+        quantity: z.number().refine(n => n !== 0, 'Quantity cannot be 0'),
+        reason: z.string().min(2).max(120),
+        godownId: z.string().optional(),
+        batchNo: z.string().max(30).optional(),
+        expiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()
+      })
+      .parse(req.body);
+    const product = await Product.findOne({ _id: req.params.id, businessId: req.business!._id }).lean();
+    if (!product) throw notFound('Product');
+    // same path as documents: total, godown, batch and item ledger stay in step
+    await inTransaction(async session => {
+      const line = { productId: String(product._id), name: product.name, unit: product.unit, quantity: Math.abs(quantity), batchNo, expiryDate } as never;
+      if (quantity < 0 && (product as { trackBatches?: boolean }).trackBatches) await allocateBatches(req.business!._id, [line], session);
+      await moveStock(req.business!, [line], quantity > 0 ? 1 : -1, { type: 'ADJUSTMENT', id: product._id, number: '', date: todayIST(), reason: `Adjustment: ${reason}`, godownId }, session);
     });
+    const p = (await Product.findById(product._id).lean())!;
     await audit(req, 'STOCK_ADJUST', `${p.name} ${quantity > 0 ? '+' : ''}${quantity} · ${reason}`);
+    res.json(p);
+  })
+);
+
+/** Barcode scan → item (POS, spec §8.3 P1). Accepts the barcode or the SKU. */
+mastersRouter.get(
+  '/products/by-barcode/:code',
+  allow(...READ),
+  ah(async (req, res) => {
+    const code = String(req.params.code).trim();
+    const p = await Product.findOne({ businessId: req.business!._id, status: 'ACTIVE', $or: [{ barcode: code }, { sku: code }] }).lean();
+    if (!p) throw notFound(`Item with barcode ${code}`);
     res.json(p);
   })
 );

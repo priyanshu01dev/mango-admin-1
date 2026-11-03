@@ -24,7 +24,10 @@ const line = z.object({
   price: z.number().min(0).optional(),
   discountPercent: z.number().min(0).max(100).optional(),
   gstRate: z.number().min(0).max(28).optional(),
-  priceIncludesTax: z.boolean().optional()
+  priceIncludesTax: z.boolean().optional(),
+  batchNo: z.string().max(30).optional(),
+  expiryDate: z.string().regex(isoDate).optional(),
+  mfgDate: z.string().regex(isoDate).optional()
 });
 const date = z.string().regex(isoDate, 'Use YYYY-MM-DD');
 const listParams = (q: Record<string, unknown>) => ({ limit: Math.min(200, Number(q.limit ?? 50)), skip: Math.max(0, Number(q.skip ?? 0)) });
@@ -73,6 +76,7 @@ txRouter.post(
         paymentReference: z.string().max(60).optional(),
         reverseCharge: z.boolean().optional(),
         notes: z.string().max(1000).optional(),
+        godownId: z.string().optional(),
         supplyType: z.enum(['REGULAR', 'EXPORT_WPAY', 'EXPORT_WOPAY', 'SEZ_WPAY', 'SEZ_WOPAY', 'DEEMED_EXPORT']).optional(),
         exportDetails: z
           .object({ currency: z.string().length(3).optional(), exchangeRate: z.number().positive().optional(), portCode: z.string().max(6).optional(), shippingBillNo: z.string().max(20).optional(), shippingBillDate: date.or(z.literal('')).optional(), lutNumber: z.string().max(30).optional() })
@@ -148,7 +152,8 @@ txRouter.post(
         vehicleNumber: z.string().max(12).optional(),
         notes: z.string().max(1000).optional(),
         amountPaid: z.number().min(0).optional(),
-        paymentMode: z.enum(MODES).optional()
+        paymentMode: z.enum(MODES).optional(),
+        godownId: z.string().optional()
       })
       .parse(req.body);
     // purchases and notes affect the books: owner/admin only; salesmen may raise sales documents

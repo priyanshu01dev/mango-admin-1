@@ -24,6 +24,7 @@ const partySchema = new Schema(
     balance: money, // + receivable (they owe us), − payable (we owe them)
     creditLimit: { type: Number, default: 0 },
     creditDays: { type: Number, default: 0 },
+    priceListId: { type: ObjectId, ref: 'PriceList', default: null },
     status: { type: String, enum: ['ACTIVE', 'BLOCKED'], default: 'ACTIVE' }
   },
   opts
@@ -37,6 +38,10 @@ const productSchema = new Schema(
     businessId: { type: ObjectId, ref: 'Business', required: true, index: true },
     name: { type: String, required: true, trim: true },
     sku: { type: String, default: '' },
+    barcode: { type: String, default: '' }, // EAN / UPC / own code (Code 128)
+    variantOf: { type: ObjectId, ref: 'Product', default: null }, // size / colour variants share a parent
+    attributes: { type: Map, of: String, default: {} }, // e.g. { Size: 'M', Colour: 'Red' }
+    trackBatches: { type: Boolean, default: false }, // batch + expiry (pharma, FMCG)
     hsnCode: { type: String, required: true, match: /^\d{4,8}$/ },
     category: { type: String, default: '' },
     unit: { type: String, default: 'PCS' }, // UQC
@@ -54,6 +59,7 @@ const productSchema = new Schema(
   opts
 );
 productSchema.index({ businessId: 1, sku: 1 }, { unique: true, partialFilterExpression: { sku: { $gt: '' } } });
+productSchema.index({ businessId: 1, barcode: 1 }, { unique: true, partialFilterExpression: { barcode: { $gt: '' } } });
 export const Product = mongoose.model('Product', productSchema);
 export type ProductDoc = InferSchemaType<typeof productSchema> & { _id: Types.ObjectId };
 
@@ -67,7 +73,9 @@ const stockMoveSchema = new Schema(
     refType: String,
     refId: ObjectId,
     refNumber: String,
-    date: { type: String, required: true }
+    date: { type: String, required: true },
+    godownId: { type: ObjectId, ref: 'Godown' },
+    batches: [{ _id: false, batchNo: String, quantity: Number, expiryDate: String }]
   },
   { timestamps: { createdAt: true, updatedAt: false }, versionKey: false }
 );
@@ -86,6 +94,10 @@ const lineSchema = new Schema(
     price: { type: Number, required: true },
     discountPercent: { type: Number, default: 0 },
     priceIncludesTax: { type: Boolean, default: false },
+    batchNo: String,
+    expiryDate: String,
+    mfgDate: String,
+    batches: [{ _id: false, batchNo: String, quantity: Number, expiryDate: String }],
     gstRate: { type: Number, required: true },
     taxableAmount: Number,
     cgstAmount: Number,
@@ -122,6 +134,7 @@ const invoiceSchema = new Schema(
     businessId: { type: ObjectId, ref: 'Business', required: true },
     number: { type: String, required: true },
     kind: { type: String, enum: ['TAX_INVOICE', 'BILL_OF_SUPPLY'], default: 'TAX_INVOICE' },
+    godownId: { type: ObjectId, ref: 'Godown' },
     supplyType: { type: String, enum: ['REGULAR', 'EXPORT_WPAY', 'EXPORT_WOPAY', 'SEZ_WPAY', 'SEZ_WOPAY', 'DEEMED_EXPORT'], default: 'REGULAR' },
     exportDetails: {
       currency: { type: String, default: '' },
@@ -211,6 +224,7 @@ const documentSchema = new Schema(
   {
     businessId: { type: ObjectId, ref: 'Business', required: true },
     docType: { type: String, enum: DOC_TYPES, required: true },
+    godownId: { type: ObjectId, ref: 'Godown' },
     number: { type: String, required: true },
     date: { type: String, required: true },
     dueDate: String,
