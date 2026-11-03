@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useBilling } from '../context/BillingContext';
+import { ImportButton } from './ImportButton';
 import { Product } from '../types';
 import { formatINR, TRANSLATIONS } from '../utils/formatters';
 import {
@@ -159,13 +160,16 @@ export const Inventory: React.FC = () => {
           </select>
         </div>
 
+        <div className="flex items-center gap-2">
+          <ImportButton kind="products" />
         <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center space-x-1.5 bg-mango-500 hover:bg-mango-600 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow-md shadow-mango-500/25"
-        >
-          <PlusCircle className="w-4 h-4" />
-          <span>{t.addProduct}</span>
-        </button>
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center space-x-1.5 bg-mango-500 hover:bg-mango-600 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow-md shadow-mango-500/25"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>{t.addProduct}</span>
+          </button>
+        </div>
       </div>
 
       {/* Products Table */}

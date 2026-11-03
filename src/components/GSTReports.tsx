@@ -1,11 +1,19 @@
 import React, { useState } from 'react';
 import { useBilling } from '../context/BillingContext';
 import { useDocuments } from '../context/DocumentsContext';
+import { get, errMsg } from '../api/client';
 import { formatINR, TRANSLATIONS } from '../utils/formatters';
 import { FileCheck2, Download, Table, FileSpreadsheet, ShieldCheck, Printer, CheckCircle2 } from 'lucide-react';
 
 export const GSTReports: React.FC = () => {
-  const { language, activeBusiness, invoices } = useBilling();
+  const { language, activeBusiness, invoices, showToast } = useBilling();
+  // GSTR-1 is filed for the previous month by default
+  const [gstrPeriod, setGstrPeriod] = useState(() => {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
   const t = TRANSLATIONS[language];
 
   const [activeReportTab, setActiveReportTab] = useState<'GSTR1' | 'GSTR3B' | 'HSN'>('GSTR1');
@@ -85,71 +93,19 @@ export const GSTReports: React.FC = () => {
 
   const hsnList = Object.values(hsnMap);
 
-  const downloadJsonForGstPortal = () => {
-    const payload = {
-      gstin: activeBusiness.gstin,
-      fp: '112026', // Return Period Nov 2026
-      gt: totalTaxable,
-      cur_gt: totalTaxable,
-      b2b: b2bInvoices.map(inv => ({
-        ctin: inv.customerGstin,
-        inv: [
-          {
-            inum: inv.invoiceNumber,
-            idt: inv.invoiceDate,
-            val: inv.grandTotal,
-            pos: inv.customerStateCode,
-            rchrg: 'N',
-            inv_typ: 'R',
-            itms: inv.items.map(it => ({
-              num: 1,
-              itm_det: {
-                rt: it.gstRate,
-                txval: it.taxableAmount,
-                iamt: it.igstAmount,
-                camt: it.cgstAmount,
-                samt: it.sgstAmount,
-                csamt: 0
-              }
-            }))
-          }
-        ]
-      })),
-      b2cs: [
-        {
-          sply_ty: 'INTRA',
-          pos: activeBusiness.stateCode,
-          txval: b2csTaxable,
-          rt: 18,
-          camt: b2csCgst,
-          samt: b2csSgst,
-          csamt: 0
-        }
-      ],
-      hsn: {
-        data: hsnList.map((h, i) => ({
-          num: i + 1,
-          hsn_sc: h.hsn,
-          desc: h.name,
-          uqc: h.unit,
-          qty: h.qty,
-          val: h.totalVal,
-          txval: h.taxableVal,
-          iamt: h.igst,
-          camt: h.cgst,
-          samt: h.sgst,
-          csamt: 0
-        }))
-      }
-    };
-
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `GSTR1_${activeBusiness.gstin}_Nov2026.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+  // GSTR-1 JSON in the portal / offline-tool format, built by the server for the chosen month
+  const downloadJsonForGstPortal = async () => {
+    try {
+      const json = await get<{ fp: string }>(`/api/reports/gstr1/json?period=${gstrPeriod}`);
+      const url = URL.createObjectURL(new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `GSTR1_${activeBusiness.gstin || 'NA'}_${json.fp}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      showToast(errMsg(e));
+    }
   };
 
   return (
@@ -171,6 +127,7 @@ export const GSTReports: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-2">
+          <input type="month" value={gstrPeriod} onChange={e => setGstrPeriod(e.target.value)} className="bg-white border border-mango-200/70 rounded-lg px-2 py-1.5 text-xs" aria-label="Return period" />
           <button
             onClick={downloadJsonForGstPortal}
             className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow-md shadow-indigo-600/20 transition-all"

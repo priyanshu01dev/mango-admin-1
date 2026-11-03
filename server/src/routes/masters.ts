@@ -216,3 +216,87 @@ mastersRouter.get(
     res.json({ product: p, rows: moves.map(m => ({ ...m, balance: (running += m.quantity) })) });
   })
 );
+
+// ---------------- bulk import (spec §8.2 / §8.3: Excel import) ----------------
+// The web app parses the CSV/Excel export and sends rows; every row is validated on its own and
+// the response lists which rows failed, so one bad row never blocks the rest.
+
+const MAX_IMPORT = 1000;
+
+mastersRouter.post(
+  '/parties/import',
+  allow(...MANAGE),
+  ah(async (req, res) => {
+    const { rows } = z.object({ rows: z.array(z.record(z.string(), z.unknown())).min(1).max(MAX_IMPORT) }).parse(req.body);
+    const errors: { row: number; message: string }[] = [];
+    const docs: Record<string, unknown>[] = [];
+    rows.forEach((raw, i) => {
+      const r = Object.fromEntries(Object.entries(raw).map(([k, v]) => [k.trim().toLowerCase().replace(/[^a-z]/g, ''), typeof v === 'string' ? v.trim() : v]));
+      const candidate = {
+        type: String(r.type ?? 'CUSTOMER').toUpperCase().startsWith('S') ? 'SUPPLIER' : 'CUSTOMER',
+        name: String(r.name ?? r.partyname ?? ''),
+        phone: r.phone || r.mobile ? String(r.phone ?? r.mobile) : undefined,
+        email: r.email ? String(r.email) : undefined,
+        gstin: r.gstin ? String(r.gstin).toUpperCase() : undefined,
+        billingAddress: r.address || r.billingaddress ? String(r.address ?? r.billingaddress) : undefined,
+        stateCode: String(r.statecode ?? (r.gstin ? String(r.gstin).slice(0, 2) : req.business!.stateCode)).padStart(2, '0'),
+        openingBalance: r.openingbalance !== undefined && r.openingbalance !== '' ? Number(r.openingbalance) : undefined,
+        creditLimit: r.creditlimit !== undefined && r.creditlimit !== '' ? Number(r.creditlimit) : undefined
+      };
+      const parsed = partySchema.safeParse(candidate);
+      if (!parsed.success) return errors.push({ row: i + 2, message: parsed.error.issues.map(x => `${x.path.join('.')}: ${x.message}`).join('; ') });
+      try {
+        checkParty(parsed.data);
+      } catch (e) {
+        return errors.push({ row: i + 2, message: (e as Error).message });
+      }
+      docs.push({ ...parsed.data, businessId: req.business!._id, state: GST_STATES[parsed.data.stateCode], balance: parsed.data.openingBalance ?? 0 });
+    });
+    if (docs.length) await Party.insertMany(docs);
+    await audit(req, 'PARTY_IMPORT', `${docs.length} imported, ${errors.length} rejected`);
+    res.json({ created: docs.length, errors });
+  })
+);
+
+mastersRouter.post(
+  '/products/import',
+  allow(...MANAGE),
+  ah(async (req, res) => {
+    const { rows } = z.object({ rows: z.array(z.record(z.string(), z.unknown())).min(1).max(MAX_IMPORT) }).parse(req.body);
+    const errors: { row: number; message: string }[] = [];
+    const created: string[] = [];
+    for (const [i, raw] of rows.entries()) {
+      const r = Object.fromEntries(Object.entries(raw).map(([k, v]) => [k.trim().toLowerCase().replace(/[^a-z]/g, ''), typeof v === 'string' ? v.trim() : v]));
+      const num = (v: unknown) => (v === undefined || v === '' ? undefined : Number(String(v).replace(/[₹,\s]/g, '')));
+      const parsed = productSchema.safeParse({
+        name: String(r.name ?? r.itemname ?? ''),
+        sku: r.sku || r.code ? String(r.sku ?? r.code) : undefined,
+        hsnCode: String(r.hsn ?? r.hsncode ?? r.hsnsac ?? ''),
+        category: r.category ? String(r.category) : undefined,
+        unit: r.unit ? String(r.unit).toUpperCase() : undefined,
+        purchasePrice: num(r.purchaseprice ?? r.cost),
+        sellingPrice: num(r.sellingprice ?? r.saleprice ?? r.price),
+        mrp: num(r.mrp),
+        taxRate: num(String(r.gst ?? r.gstrate ?? r.taxrate ?? '18').replace('%', '')),
+        openingStock: num(r.openingstock ?? r.stock),
+        minStock: num(r.minstock ?? r.lowstock)
+      });
+      if (!parsed.success) {
+        errors.push({ row: i + 2, message: parsed.error.issues.map(x => `${x.path.join('.')}: ${x.message}`).join('; ') });
+        continue;
+      }
+      const { openingStock, ...body } = parsed.data;
+      try {
+        await inTransaction(async session => {
+          const [p] = await Product.create([{ ...body, businessId: req.business!._id, stock: openingStock ?? 0 }], { session });
+          if (openingStock) await StockMovement.create([{ businessId: req.business!._id, productId: p._id, quantity: openingStock, reason: 'Opening stock (import)', date: todayIST() }], { session });
+        });
+        created.push(body.name);
+      } catch (e) {
+        errors.push({ row: i + 2, message: (e as { code?: number }).code === 11000 ? `SKU "${body.sku}" already exists` : (e as Error).message });
+      }
+    }
+    await audit(req, 'PRODUCT_IMPORT', `${created.length} imported, ${errors.length} rejected`);
+    res.json({ created: created.length, errors });
+  })
+);

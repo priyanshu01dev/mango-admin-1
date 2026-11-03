@@ -44,6 +44,7 @@ export interface InvoiceItem {
   unit: string; // PCS, KGS, BOX, MTR, NOS, PKT
   price: number; // Unit selling price before tax
   discountPercent: number; // e.g. 5%
+  priceIncludesTax?: boolean; // price entered including GST
   gstRate: number; // 0, 5, 12, 18, 28
   taxableAmount: number;
   cgstAmount: number;
@@ -82,6 +83,15 @@ export interface Invoice {
   eInvoiceStatus?: 'NOT_GENERATED' | 'GENERATED' | 'FAILED';
   irnNumber?: string;
   irnMock?: boolean; // generated in GSP mock mode: NOT a valid IRN
+  billDiscount?: number;
+  charges?: { label: string; amount: number; gstRate: number; taxableAmount?: number; cgstAmount?: number; sgstAmount?: number; igstAmount?: number; totalAmount?: number }[];
+  chargesTotal?: number;
+  tcsRate?: number;
+  tcsAmount?: number;
+  tdsDeducted?: number;
+  shippingAddress?: string;
+  poNumber?: string;
+  transport?: { mode?: string; vehicleNumber?: string; transporterName?: string; lrNumber?: string };
   eWayBillStatus?: 'NOT_GENERATED' | 'GENERATED' | 'EXPIRED';
   eWayBillNumber?: string;
   createdAt: string;
@@ -154,6 +164,7 @@ export interface PaymentTransaction {
   paymentDate: string;
   mode: PaymentMode;
   referenceNumber: string; // UTR / Cheque / UPI Ref
+  tdsAmount?: number; // TDS deducted by the customer on this receipt
   notes?: string;
 }
 

@@ -7,6 +7,7 @@ import { FeatureFlag } from '../models/platform';
 import { allow, MANAGE, READ, requireBusiness } from '../middleware/auth';
 import { assertLimit, audit, effectivePlan, peekNumber, usage } from '../services/common';
 import { AuditLog } from '../models/core';
+import { Party, Product, Invoice, TradeDocument, Payment, Expense, StockMovement } from '../models/billing';
 import { isValidDocNumber, isValidGstin, isValidPan, GST_STATES } from '../../../shared/gst';
 import { normalizePhone } from '../services/auth';
 import { todayIST } from '../lib/dates';
@@ -205,5 +206,47 @@ businessRouter.get(
       out[String(f._id)] = !!f.enabled && f.plans.includes(plan._id) && (f.platforms.length === 0 || f.platforms.includes(platform as 'Web')) && bucket < f.rollout;
     }
     res.json(out);
+  })
+);
+
+/**
+ * Full data export for the business (Play data-safety: data export on request). Owner / admin / CA.
+ */
+businessRouter.get(
+  '/current/export',
+  allow('OWNER', 'ADMIN', 'ACCOUNTANT'),
+  ah(async (req, res) => {
+    const b = req.business!._id;
+    const [parties, products, invoices, documents, payments, expenses, stock] = await Promise.all([
+      Party.find({ businessId: b }).lean(),
+      Product.find({ businessId: b }).lean(),
+      Invoice.find({ businessId: b }).lean(),
+      TradeDocument.find({ businessId: b }).lean(),
+      Payment.find({ businessId: b }).lean(),
+      Expense.find({ businessId: b }).lean(),
+      StockMovement.find({ businessId: b }).lean()
+    ]);
+    await audit(req, 'DATA_EXPORT', `Exported ${invoices.length} invoices, ${documents.length} documents`, 'WARNING');
+    res.setHeader('Content-Disposition', `attachment; filename="mango-invoice-export-${todayIST()}.json"`);
+    res.json({ exportedAt: new Date().toISOString(), business: req.business, parties, products, invoices, documents, payments, expenses, stockMovements: stock });
+  })
+);
+
+/**
+ * Account deletion request (Play data-safety). Access is closed immediately; data is purged by the
+ * platform after the GST retention period (books must be kept 72 months, Sec 36 CGST Act).
+ */
+businessRouter.post(
+  '/current/deletion-request',
+  allow('OWNER'),
+  ah(async (req, res) => {
+    const { confirmName } = z.object({ confirmName: z.string() }).parse(req.body);
+    if (confirmName.trim().toLowerCase() !== req.business!.name.trim().toLowerCase()) throw badRequest('Type the exact business name to confirm');
+    await Business.updateOne(
+      { _id: req.business!._id },
+      { status: 'SUSPENDED', suspendReason: 'Owner requested account deletion', deletionRequestedAt: new Date(), deletionRequestedBy: req.user!._id }
+    );
+    await audit(req, 'DELETION_REQUEST', `Owner requested deletion of ${req.business!.name}`, 'WARNING');
+    res.json({ ok: true, message: 'Access closed. Your data will be deleted once the 72-month GST record-keeping period ends; download an export first if you need a copy.' });
   })
 );

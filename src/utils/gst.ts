@@ -2,7 +2,7 @@ import { InvoiceItem, Product } from '../types';
 import { recalcItem } from '../../shared/gst';
 
 // GST maths lives in /shared so the web app and the API server compute identical totals.
-export { recalcItem, docTotals, fyLabel, isValidDocNumber, daysBetween, isValidGstin, isValidPan, r2 } from '../../shared/gst';
+export { recalcItem, docTotals, invoiceTotals, fyLabel, isValidDocNumber, daysBetween, isValidGstin, isValidPan, r2 } from '../../shared/gst';
 
 export function itemFromProduct(p: Product, isInterState: boolean, priceField: 'sellingPrice' | 'purchasePrice' = 'sellingPrice', quantity = 1): InvoiceItem {
   return recalcItem(

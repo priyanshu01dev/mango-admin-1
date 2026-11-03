@@ -3,7 +3,7 @@ import type { ClientSession } from 'mongoose';
 import { Invoice, Party, Payment, TradeDocument } from '../models/billing';
 import { BusinessDoc } from '../models/core';
 import { inTransaction } from '../db';
-import { r2, isValidDocNumber, isValidGstin } from '../../../shared/gst';
+import { r2, isValidDocNumber, isValidGstin, invoiceTotals } from '../../../shared/gst';
 import { badRequest, conflict, notFound } from '../lib/errors';
 import { todayIST } from '../lib/dates';
 import { assertLimit, audit, buildLines, bumpFirstInvoice, compliance, docTotals, LineInput, moveStock, nextNumber } from './common';
@@ -21,6 +21,13 @@ export interface CreateInvoiceInput {
   reverseCharge?: boolean;
   notes?: string;
   sourceDoc?: string;
+  billDiscount?: number;
+  charges?: { label: string; amount: number; gstRate?: number }[];
+  tcsRate?: number;
+  shippingAddress?: string;
+  poNumber?: string;
+  poDate?: string;
+  transport?: { mode?: 'ROAD' | 'RAIL' | 'AIR' | 'SHIP' | ''; vehicleNumber?: string; transporterName?: string; lrNumber?: string; lrDate?: string };
 }
 
 const hsnMin = (business: BusinessDoc, isB2B: boolean, rules: { hsnDigitsUpto5Cr: number; hsnDigitsAbove5Cr: number }) =>
@@ -63,7 +70,14 @@ export async function createInvoice(req: Request, input: CreateInvoiceInput, out
       session
     );
     if (billOfSupply) lines.forEach(l => Object.assign(l, { gstRate: 0, cgstAmount: 0, sgstAmount: 0, igstAmount: 0, totalAmount: l.taxableAmount }));
-    const t = docTotals(lines, business.invoiceSettings?.roundOff ?? true);
+    // charges (freight, packing…) are taxed at the rate of the main supply unless given
+    const principalRate = billOfSupply ? 0 : Math.max(...lines.map(l => l.gstRate));
+    const { lines: finalLines, charges, ...t } = invoiceTotals(lines, isInterState, {
+      billDiscount: input.billDiscount,
+      charges: (input.charges ?? []).map(c => ({ label: c.label, amount: c.amount, gstRate: billOfSupply ? 0 : c.gstRate ?? principalRate })),
+      tcsRate: input.tcsRate,
+      roundOff: business.invoiceSettings?.roundOff ?? true
+    });
 
     // Rule 46: unregistered buyer above threshold needs full address
     if (!isB2B && t.taxableTotal >= rules.b2cLargeThreshold && !buyer.address.trim()) {
@@ -101,8 +115,13 @@ export async function createInvoice(req: Request, input: CreateInvoiceInput, out
           placeOfSupply: buyer.stateCode,
           isInterState,
           reverseCharge: !!input.reverseCharge,
-          items: lines,
+          items: finalLines,
           ...t,
+          charges,
+          shippingAddress: input.shippingAddress ?? '',
+          poNumber: input.poNumber ?? '',
+          poDate: input.poDate ?? '',
+          transport: { mode: input.transport?.mode ?? '', vehicleNumber: (input.transport?.vehicleNumber ?? '').toUpperCase(), transporterName: input.transport?.transporterName ?? '', lrNumber: input.transport?.lrNumber ?? '', lrDate: input.transport?.lrDate ?? '' },
           amountPaid: paid,
           balanceDue: r2(t.grandTotal - paid),
           status: paid >= t.grandTotal ? 'PAID' : paid > 0 ? 'PARTIALLY_PAID' : 'UNPAID',
@@ -114,7 +133,7 @@ export async function createInvoice(req: Request, input: CreateInvoiceInput, out
       { session }
     );
 
-    await moveStock(business, lines, -1, { type: 'INVOICE', id: inv._id, number, date, reason: 'Sale' }, session);
+    await moveStock(business, finalLines, -1, { type: 'INVOICE', id: inv._id, number, date, reason: 'Sale' }, session);
 
     if (buyer.partyId) await Party.updateOne({ _id: buyer.partyId }, { $inc: { balance: t.grandTotal } }, { session });
     if (paid > 0) {
@@ -168,6 +187,7 @@ export interface PaymentInput {
   invoiceId?: string; // PAYMENT_IN against an invoice
   billId?: string; // PAYMENT_OUT against a purchase bill
   amount: number;
+  tdsAmount?: number; // PAYMENT_IN: TDS the customer deducted (Sec 194Q / 194C etc.)
   date?: string;
   mode: 'CASH' | 'UPI' | 'NEFT_RTGS' | 'CHEQUE' | 'CARD';
   reference?: string;
@@ -177,7 +197,9 @@ export interface PaymentInput {
 export async function recordPayment(req: Request, input: PaymentInput) {
   const business = req.business!;
   const amount = r2(input.amount);
+  const tds = input.type === 'PAYMENT_IN' ? r2(Math.max(0, input.tdsAmount ?? 0)) : 0;
   if (!(amount > 0)) throw badRequest('Amount must be more than 0');
+  const settled = r2(amount + tds);
   return inTransaction(async session => {
     const party = await Party.findOne({ _id: input.partyId, businessId: business._id }).session(session);
     if (!party) throw notFound('Party');
@@ -190,9 +212,10 @@ export async function recordPayment(req: Request, input: PaymentInput) {
       const inv = await Invoice.findOne({ _id: input.invoiceId, businessId: business._id, partyId: party._id }).session(session);
       if (!inv) throw notFound('Invoice for this customer');
       if (inv.status === 'CANCELLED') throw badRequest('Invoice is cancelled');
-      if (amount > inv.balanceDue + 0.001) throw badRequest(`Amount is more than the balance due (₹${inv.balanceDue})`);
+      if (settled > inv.balanceDue + 0.001) throw badRequest(`Amount${tds ? ' + TDS' : ''} is more than the balance due (₹${inv.balanceDue})`);
       inv.amountPaid = r2(inv.amountPaid + amount);
-      inv.balanceDue = r2(inv.balanceDue - amount);
+      inv.tdsDeducted = r2((inv.tdsDeducted ?? 0) + tds);
+      inv.balanceDue = r2(inv.balanceDue - settled);
       inv.status = inv.balanceDue <= 0 ? 'PAID' : 'PARTIALLY_PAID';
       await inv.save({ session });
       refType = 'INVOICE';
@@ -214,9 +237,9 @@ export async function recordPayment(req: Request, input: PaymentInput) {
     }
 
     // receivable goes down when money comes in; payable goes down (balance up) when we pay
-    await Party.updateOne({ _id: party._id }, { $inc: { balance: input.type === 'PAYMENT_IN' ? -amount : amount } }, { session });
+    await Party.updateOne({ _id: party._id }, { $inc: { balance: input.type === 'PAYMENT_IN' ? -settled : amount } }, { session });
     const [pay] = await Payment.create(
-      [{ businessId: business._id, type: input.type, partyId: party._id, partyName: party.name, refType, refId, refNumber, amount, date, mode: input.mode, reference: input.reference ?? '', notes: input.notes ?? '', createdBy: req.user!._id }],
+      [{ businessId: business._id, type: input.type, partyId: party._id, partyName: party.name, refType, refId, refNumber, amount, tdsAmount: tds, date, mode: input.mode, reference: input.reference ?? '', notes: input.notes ?? '', createdBy: req.user!._id }],
       { session }
     );
     await audit(req, input.type, `₹${amount} ${input.type === 'PAYMENT_IN' ? 'from' : 'to'} ${party.name}${refNumber ? ' · ' + refNumber : ''}`, 'SUCCESS', business._id, session);

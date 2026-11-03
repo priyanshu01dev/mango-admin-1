@@ -23,7 +23,8 @@ const line = z.object({
   quantity: z.number().positive(),
   price: z.number().min(0).optional(),
   discountPercent: z.number().min(0).max(100).optional(),
-  gstRate: z.number().min(0).max(28).optional()
+  gstRate: z.number().min(0).max(28).optional(),
+  priceIncludesTax: z.boolean().optional()
 });
 const date = z.string().regex(isoDate, 'Use YYYY-MM-DD');
 const listParams = (q: Record<string, unknown>) => ({ limit: Math.min(200, Number(q.limit ?? 50)), skip: Math.max(0, Number(q.skip ?? 0)) });
@@ -71,7 +72,16 @@ txRouter.post(
         paymentMode: z.enum(MODES).optional(),
         paymentReference: z.string().max(60).optional(),
         reverseCharge: z.boolean().optional(),
-        notes: z.string().max(1000).optional()
+        notes: z.string().max(1000).optional(),
+        billDiscount: z.number().min(0).optional(),
+        charges: z.array(z.object({ label: z.string().min(1).max(40), amount: z.number().min(0), gstRate: z.number().min(0).max(28).optional() })).max(5).optional(),
+        tcsRate: z.number().min(0).max(5).optional(),
+        shippingAddress: z.string().max(300).optional(),
+        poNumber: z.string().max(40).optional(),
+        poDate: date.optional(),
+        transport: z
+          .object({ mode: z.enum(['ROAD', 'RAIL', 'AIR', 'SHIP', '']).optional(), vehicleNumber: z.string().max(12).optional(), transporterName: z.string().max(80).optional(), lrNumber: z.string().max(30).optional(), lrDate: date.or(z.literal('')).optional() })
+          .optional()
       })
       .parse(req.body);
     res.status(201).json(await createInvoice(req, body));
@@ -179,7 +189,7 @@ txRouter.post(
   '/payments',
   ah(async (req, res) => {
     const body = z
-      .object({ type: z.enum(['PAYMENT_IN', 'PAYMENT_OUT']), partyId: z.string(), invoiceId: z.string().optional(), billId: z.string().optional(), amount: z.number().positive(), date: date.optional(), mode: z.enum(MODES), reference: z.string().max(60).optional(), notes: z.string().max(300).optional() })
+      .object({ type: z.enum(['PAYMENT_IN', 'PAYMENT_OUT']), partyId: z.string(), invoiceId: z.string().optional(), billId: z.string().optional(), amount: z.number().positive(), tdsAmount: z.number().min(0).optional(), date: date.optional(), mode: z.enum(MODES), reference: z.string().max(60).optional(), notes: z.string().max(300).optional() })
       .parse(req.body);
     assertRole(req, body.type === 'PAYMENT_OUT' ? MANAGE : SELL);
     res.status(201).json(await recordPayment(req, body));

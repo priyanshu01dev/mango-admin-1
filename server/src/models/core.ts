@@ -115,7 +115,9 @@ const businessSchema = new Schema(
     adminNotes: { type: String, default: '' },
     ownerId: { type: ObjectId, ref: 'User', required: true, index: true },
     firstInvoiceAt: Date,
-    lastActiveAt: Date
+    lastActiveAt: Date,
+    deletionRequestedAt: Date,
+    deletionRequestedBy: { type: ObjectId, ref: 'User' }
   },
   opts
 );

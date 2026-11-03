@@ -132,6 +132,7 @@ export interface LineInput {
   price?: number;
   discountPercent?: number;
   gstRate?: number;
+  priceIncludesTax?: boolean;
 }
 
 /**
@@ -163,6 +164,7 @@ export async function buildLines(
       unit: p?.unit ?? inp.unit ?? 'NOS',
       price: inp.price ?? (p ? (p[priceField] as number) : 0),
       discountPercent: inp.discountPercent ?? 0,
+      priceIncludesTax: inp.priceIncludesTax ?? (inp.price === undefined ? !!p?.priceIncludesTax : false),
       gstRate: p?.taxRate ?? inp.gstRate ?? 18,
       taxableAmount: 0,
       cgstAmount: 0,

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useBilling } from '../context/BillingContext';
 import { InvoiceSettingsPanel } from './InvoiceSettingsPanel';
 import { TeamPanel } from './TeamPanel';
+import { DataControls } from './DataControls';
 import { BusinessProfile } from '../types';
 import { formatINR, TRANSLATIONS, INDIAN_STATES } from '../utils/formatters';
 import { Settings, ShieldCheck, Users, FileText, CheckCircle2, AlertTriangle, Building, Save } from 'lucide-react';
@@ -230,6 +231,8 @@ export const AuditSettings: React.FC = () => {
       )}
 
       {/* SUBTAB 2: RBAC */}
+      {activeSubTab === 'BIZ_SETTINGS' && <DataControls />}
+
       {activeSubTab === 'INVOICE_SETTINGS' && <InvoiceSettingsPanel />}
 
       {activeSubTab === 'USERS_RBAC' && <TeamPanel />}

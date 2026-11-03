@@ -85,6 +85,7 @@ const lineSchema = new Schema(
     unit: { type: String, default: 'PCS' },
     price: { type: Number, required: true },
     discountPercent: { type: Number, default: 0 },
+    priceIncludesTax: { type: Boolean, default: false },
     gstRate: { type: Number, required: true },
     taxableAmount: Number,
     cgstAmount: Number,
@@ -129,7 +130,35 @@ const invoiceSchema = new Schema(
     reverseCharge: { type: Boolean, default: false },
     items: { type: [lineSchema], validate: [(v: unknown[]) => v.length > 0, 'At least one item'] },
     ...totals,
+    billDiscount: money,
+    charges: [
+      {
+        _id: false,
+        label: String,
+        amount: Number,
+        gstRate: Number,
+        taxableAmount: Number,
+        cgstAmount: Number,
+        sgstAmount: Number,
+        igstAmount: Number,
+        totalAmount: Number
+      }
+    ],
+    chargesTotal: money,
+    tcsRate: { type: Number, default: 0 },
+    tcsAmount: money,
+    shippingAddress: { type: String, default: '' },
+    poNumber: { type: String, default: '' },
+    poDate: { type: String, default: '' },
+    transport: {
+      mode: { type: String, enum: ['ROAD', 'RAIL', 'AIR', 'SHIP', ''], default: '' },
+      vehicleNumber: { type: String, default: '' },
+      transporterName: { type: String, default: '' },
+      lrNumber: { type: String, default: '' },
+      lrDate: { type: String, default: '' }
+    },
     amountPaid: money,
+    tdsDeducted: money, // TDS deducted by the buyer (counts towards settling the invoice)
     creditedAmount: money, // reduced by credit notes
     balanceDue: money,
     status: { type: String, enum: ['UNPAID', 'PARTIALLY_PAID', 'PAID', 'CANCELLED'], default: 'UNPAID', index: true },
@@ -208,6 +237,7 @@ const paymentSchema = new Schema(
     refId: ObjectId,
     refNumber: String,
     amount: { type: Number, required: true, min: 0.01 },
+    tdsAmount: { type: Number, default: 0 }, // TDS deducted by the customer on this receipt
     date: { type: String, required: true },
     mode: { type: String, enum: ['CASH', 'UPI', 'NEFT_RTGS', 'CHEQUE', 'CARD'], required: true },
     reference: { type: String, default: '' },

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDocuments } from '../context/DocumentsContext';
-import { isValidDocNumber } from '../utils/gst';
+import { isValidDocNumber, recalcItem, invoiceTotals } from '../utils/gst';
 import { useBilling } from '../context/BillingContext';
 import { Invoice, InvoiceItem, InvoiceStatus } from '../types';
 import { formatINR, formatDate, TRANSLATIONS, INDIAN_STATES, numberToWordsINR } from '../utils/formatters';
@@ -20,7 +20,8 @@ import {
   X,
   FileDown,
   Building2,
-  AlertCircle
+  AlertCircle,
+  Copy
 } from 'lucide-react';
 
 interface InvoicesProps {
@@ -89,6 +90,18 @@ export const Invoices: React.FC<InvoicesProps> = ({
   }, [isCreateModalOpen]);
   const [notes, setNotes] = useState('Goods once sold cannot be returned without original invoice.');
   const [initialAmountPaid, setInitialAmountPaid] = useState<number>(0);
+  // bill-level extras (spec §8.4)
+  const [billDiscount, setBillDiscount] = useState(0);
+  const [freight, setFreight] = useState(0);
+  const [packing, setPacking] = useState(0);
+  const [tcsRate, setTcsRate] = useState(0);
+  const [shippingAddress, setShippingAddress] = useState('');
+  const [poNumber, setPoNumber] = useState('');
+  const [invVehicle, setInvVehicle] = useState('');
+  const [invTransporter, setInvTransporter] = useState('');
+  const [lrNumber, setLrNumber] = useState('');
+  const [showExtras, setShowExtras] = useState(false);
+  const [paymentTds, setPaymentTds] = useState(0);
 
   // Dynamic invoice items
   const [formItems, setFormItems] = useState<InvoiceItem[]>([
@@ -124,33 +137,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
   });
 
   // Calculate live item tax & totals
-  const recalculateItem = (item: InvoiceItem, isInter: boolean): InvoiceItem => {
-    const totalRaw = item.price * item.quantity;
-    const discount = (totalRaw * (item.discountPercent || 0)) / 100;
-    const taxable = Math.max(0, totalRaw - discount);
-
-    let cgst = 0;
-    let sgst = 0;
-    let igst = 0;
-
-    if (isInter) {
-      igst = (taxable * item.gstRate) / 100;
-    } else {
-      cgst = (taxable * (item.gstRate / 2)) / 100;
-      sgst = (taxable * (item.gstRate / 2)) / 100;
-    }
-
-    const total = taxable + cgst + sgst + igst;
-
-    return {
-      ...item,
-      taxableAmount: parseFloat(taxable.toFixed(2)),
-      cgstAmount: parseFloat(cgst.toFixed(2)),
-      sgstAmount: parseFloat(sgst.toFixed(2)),
-      igstAmount: parseFloat(igst.toFixed(2)),
-      totalAmount: parseFloat(total.toFixed(2))
-    };
-  };
+  const recalculateItem = (item: InvoiceItem, isInter: boolean): InvoiceItem => recalcItem(item, isInter);
 
   const handleItemFieldChange = (index: number, field: keyof InvoiceItem, value: any) => {
     setFormItems(prev => {
@@ -207,17 +194,37 @@ export const Invoices: React.FC<InvoicesProps> = ({
     setFormItems(prev => prev.filter((_, i) => i !== idx));
   };
 
-  // Grand totals
-  const subTotal = formItems.reduce((acc, i) => acc + (i.price * i.quantity), 0);
-  const totalDiscount = formItems.reduce((acc, i) => acc + ((i.price * i.quantity * (i.discountPercent || 0)) / 100), 0);
-  const taxableTotal = formItems.reduce((acc, i) => acc + i.taxableAmount, 0);
-  const cgstTotal = formItems.reduce((acc, i) => acc + i.cgstAmount, 0);
-  const sgstTotal = formItems.reduce((acc, i) => acc + i.sgstAmount, 0);
-  const igstTotal = formItems.reduce((acc, i) => acc + i.igstAmount, 0);
-  const totalGst = cgstTotal + sgstTotal + igstTotal;
-  const rawGrandTotal = taxableTotal + totalGst;
-  const roundedGrandTotal = Math.round(rawGrandTotal);
-  const roundOff = parseFloat((roundedGrandTotal - rawGrandTotal).toFixed(2));
+  // Grand totals: same maths as the server (bill discount, taxed charges, TCS, round-off)
+  const principalRate = Math.max(0, ...formItems.map(i => i.gstRate));
+  const formCharges = [
+    { label: 'Freight', amount: freight, gstRate: principalRate },
+    { label: 'Packing', amount: packing, gstRate: principalRate }
+  ].filter(c => c.amount > 0);
+  const totals = invoiceTotals(formItems, isInterState, { billDiscount, charges: formCharges, tcsRate });
+  const { subTotal, totalDiscount, taxableTotal, cgstTotal, sgstTotal, igstTotal, totalGst, roundOff, tcsAmount, chargesTotal } = totals;
+  const roundedGrandTotal = totals.grandTotal;
+
+  /** Pre-fills the form from an existing invoice (new number and today's date). */
+  const duplicateInvoice = (inv: Invoice) => {
+    setSelectedCustomerId(inv.customerId);
+    setCustomCustomerName(inv.customerId ? '' : inv.customerName);
+    setCustomCustomerPhone(inv.customerId ? '' : inv.customerPhone);
+    setCustomCustomerAddress(inv.customerId ? '' : inv.customerAddress);
+    setCustomCustomerGstin(inv.customerId ? '' : inv.customerGstin ?? '');
+    setCustomerStateCode(inv.customerStateCode);
+    setFormItems(inv.items.map((it, i) => recalcItem({ ...it, id: 'item-' + Date.now() + i }, inv.isInterState)));
+    setBillDiscount(inv.billDiscount ?? 0);
+    setFreight(inv.charges?.find(c => c.label === 'Freight')?.amount ?? 0);
+    setPacking(inv.charges?.find(c => c.label === 'Packing')?.amount ?? 0);
+    setTcsRate(inv.tcsRate ?? 0);
+    setShippingAddress(inv.shippingAddress ?? '');
+    setPoNumber('');
+    setNotes(inv.notes?.replace(/^CANCELLED:[^|]*\|?\s*/, '') ?? '');
+    setInitialAmountPaid(0);
+    setInvoiceDate(new Date().toISOString().slice(0, 10));
+    setShowExtras(!!(inv.billDiscount || inv.charges?.length || inv.tcsRate || inv.shippingAddress));
+    setIsCreateModalOpen(true);
+  };
 
   // Submit invoice
   const handleSaveInvoice = async (e: React.FormEvent) => {
@@ -268,7 +275,13 @@ export const Invoices: React.FC<InvoicesProps> = ({
       status,
       notes,
       eInvoiceStatus: 'NOT_GENERATED',
-      eWayBillStatus: 'NOT_GENERATED'
+      eWayBillStatus: 'NOT_GENERATED',
+      billDiscount,
+      charges: formCharges,
+      tcsRate,
+      shippingAddress,
+      poNumber,
+      transport: { mode: 'ROAD', vehicleNumber: invVehicle, transporterName: invTransporter, lrNumber }
     });
 
     // keep the form open (with what was typed) if the server rejected it
@@ -287,6 +300,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
       invoiceId: payingInvoice.id,
       invoiceNumber: payingInvoice.invoiceNumber,
       amount: paymentAmount,
+      tdsAmount: paymentTds || undefined,
       paymentDate: new Date().toISOString().slice(0, 10),
       mode: paymentMode,
       referenceNumber: paymentRef || 'PAY-' + Date.now().toString().slice(-6),
@@ -495,6 +509,15 @@ export const Invoices: React.FC<InvoicesProps> = ({
                       title={t.shareWhatsapp}
                     >
                       <Share2 className="w-3.5 h-3.5" />
+                    </button>
+
+                    {/* Duplicate (spec §8.4) */}
+                    <button
+                      onClick={() => duplicateInvoice(inv)}
+                      className="p-1.5 rounded-lg bg-mango-50/60 hover:bg-mango-100 text-stone-500 hover:text-ink transition-colors"
+                      title="Duplicate invoice"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
                     </button>
 
                     {/* Cancel (Rule 46: number stays in the register, never reused) */}
@@ -787,6 +810,10 @@ export const Invoices: React.FC<InvoicesProps> = ({
                               onChange={e => handleItemFieldChange(idx, 'price', parseFloat(e.target.value) || 0)}
                               className="w-full bg-mango-50/60 border border-mango-200/70 rounded p-1.5 text-ink text-xs"
                             />
+                            <label className="flex items-center gap-1 text-[9px] text-stone-500 mt-0.5">
+                              <input type="checkbox" checked={!!item.priceIncludesTax} onChange={e => handleItemFieldChange(idx, 'priceIncludesTax', e.target.checked)} />
+                              incl. GST
+                            </label>
                           </td>
 
                           <td className="py-2 pr-2">
@@ -852,6 +879,43 @@ export const Invoices: React.FC<InvoicesProps> = ({
                   </div>
 
                   <div>
+                    <button type="button" onClick={() => setShowExtras(v => !v)} className="text-[11px] font-bold text-mango-700">
+                      {showExtras ? '− Hide' : '+ Add'} discount, freight, TCS, shipping & transport
+                    </button>
+                    {showExtras && (
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <label className="text-[10px] text-stone-500">Bill discount (₹, before GST)
+                          <input type="number" min="0" value={billDiscount} onChange={e => setBillDiscount(Math.max(0, parseFloat(e.target.value) || 0))} className="w-full bg-white border border-mango-200/70 rounded p-1.5 font-mono text-ink" />
+                        </label>
+                        <label className="text-[10px] text-stone-500">TCS % (if applicable)
+                          <input type="number" min="0" max="5" step="0.1" value={tcsRate} onChange={e => setTcsRate(Math.max(0, parseFloat(e.target.value) || 0))} className="w-full bg-white border border-mango-200/70 rounded p-1.5 font-mono text-ink" />
+                        </label>
+                        <label className="text-[10px] text-stone-500">Freight (₹, taxed {principalRate}%)
+                          <input type="number" min="0" value={freight} onChange={e => setFreight(Math.max(0, parseFloat(e.target.value) || 0))} className="w-full bg-white border border-mango-200/70 rounded p-1.5 font-mono text-ink" />
+                        </label>
+                        <label className="text-[10px] text-stone-500">Packing (₹, taxed {principalRate}%)
+                          <input type="number" min="0" value={packing} onChange={e => setPacking(Math.max(0, parseFloat(e.target.value) || 0))} className="w-full bg-white border border-mango-200/70 rounded p-1.5 font-mono text-ink" />
+                        </label>
+                        <label className="text-[10px] text-stone-500 col-span-2">Ship to (if different from billing address)
+                          <input value={shippingAddress} onChange={e => setShippingAddress(e.target.value)} className="w-full bg-white border border-mango-200/70 rounded p-1.5 text-ink" />
+                        </label>
+                        <label className="text-[10px] text-stone-500">Buyer PO number
+                          <input value={poNumber} onChange={e => setPoNumber(e.target.value)} className="w-full bg-white border border-mango-200/70 rounded p-1.5 font-mono text-ink" />
+                        </label>
+                        <label className="text-[10px] text-stone-500">Vehicle number
+                          <input value={invVehicle} onChange={e => setInvVehicle(e.target.value.toUpperCase())} className="w-full bg-white border border-mango-200/70 rounded p-1.5 font-mono text-ink" placeholder="DL01AB1234" />
+                        </label>
+                        <label className="text-[10px] text-stone-500">Transporter
+                          <input value={invTransporter} onChange={e => setInvTransporter(e.target.value)} className="w-full bg-white border border-mango-200/70 rounded p-1.5 text-ink" />
+                        </label>
+                        <label className="text-[10px] text-stone-500">LR / docket no.
+                          <input value={lrNumber} onChange={e => setLrNumber(e.target.value)} className="w-full bg-white border border-mango-200/70 rounded p-1.5 font-mono text-ink" />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
                     <label className="block text-[11px] text-stone-500 mb-1">
                       Initial Advance / Amount Paid Now (₹)
                     </label>
@@ -871,6 +935,18 @@ export const Invoices: React.FC<InvoicesProps> = ({
 
                 {/* Calculation breakdown */}
                 <div className="bg-mango-50/70 p-4 rounded-xl border border-mango-200/70 space-y-2 text-xs">
+                  {totals.billDiscount > 0 && (
+                    <div className="flex justify-between text-stone-500">
+                      <span>Bill discount:</span>
+                      <span className="font-mono text-rose-600">−{formatINR(totals.billDiscount)}</span>
+                    </div>
+                  )}
+                  {chargesTotal > 0 && (
+                    <div className="flex justify-between text-stone-500">
+                      <span>Freight / packing:</span>
+                      <span className="font-mono text-ink">{formatINR(chargesTotal)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-stone-500">
                     <span>Taxable Amount:</span>
                     <span className="font-mono text-ink">{formatINR(taxableTotal)}</span>
@@ -894,6 +970,12 @@ export const Invoices: React.FC<InvoicesProps> = ({
                     </>
                   )}
 
+                  {tcsAmount > 0 && (
+                    <div className="flex justify-between text-stone-500">
+                      <span>TCS @ {tcsRate}%:</span>
+                      <span className="font-mono text-ink">{formatINR(tcsAmount)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-stone-500">
                     <span>Round Off:</span>
                     <span className="font-mono text-stone-700">{roundOff > 0 ? `+${roundOff}` : roundOff}</span>
@@ -966,6 +1048,18 @@ export const Invoices: React.FC<InvoicesProps> = ({
                   onChange={e => setPaymentAmount(parseFloat(e.target.value) || 0)}
                   className="w-full bg-mango-50/60 border border-mango-200/70 rounded-lg p-2 font-mono text-leaf-600 font-bold"
                 />
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-stone-500 mb-1">TDS deducted by customer (₹, optional)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={paymentTds}
+                  onChange={e => setPaymentTds(Math.max(0, parseFloat(e.target.value) || 0))}
+                  className="w-full bg-mango-50/60 border border-mango-200/70 rounded-lg p-2 font-mono text-ink"
+                />
+                <p className="text-[10px] text-stone-500 mt-0.5">Amount received + TDS settles the invoice. Claim the TDS credit from Form 26AS.</p>
               </div>
 
               <div>

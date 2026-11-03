@@ -1,4 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useDocuments } from '../context/DocumentsContext';
+import { printInvoice, upiQrDataUrl } from './print/printInvoice';
+import type { InvoiceTemplate } from '../types/documents';
 import { Invoice } from '../types';
 import { useBilling } from '../context/BillingContext';
 import { formatINR, numberToWordsINR, formatDate, getStateNameByCode } from '../utils/formatters';
@@ -10,10 +13,27 @@ interface InvoicePrintModalProps {
 }
 
 export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoice, onClose }) => {
-  const { activeBusiness, language, showToast } = useBilling();
+  const { activeBusiness, language, showToast, current } = useBilling();
+  const { settings } = useDocuments();
+  const [template, setTemplate] = useState<InvoiceTemplate>(settings.template);
+  const [qr, setQr] = useState('');
+  // Free plan prints the "Made with Mango Invoice" watermark (spec §10)
+  const watermark = !!current?.plan?.watermark;
+
+  useEffect(() => {
+    if (!activeBusiness.upiId) return;
+    upiQrDataUrl(activeBusiness, invoice).then(setQr).catch(() => setQr(''));
+  }, [activeBusiness, invoice]);
 
   const handlePrint = () => {
-    window.print();
+    printInvoice(invoice, activeBusiness, {
+      template,
+      showUpiQr: settings.showUpiQr,
+      showBankDetails: settings.showBankDetails,
+      showSignature: settings.showSignature,
+      watermark,
+      terms: activeBusiness.terms
+    }).catch(e => showToast(e.message));
   };
 
   const handleWhatsApp = () => {
@@ -42,6 +62,18 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoice, o
               <Share2 className="w-3.5 h-3.5" />
               <span>WhatsApp</span>
             </button>
+            <select
+              value={template}
+              onChange={e => setTemplate(e.target.value as InvoiceTemplate)}
+              className="bg-white/20 border border-white/30 text-white rounded-lg text-xs px-2 py-1.5"
+              aria-label="Print template"
+            >
+              <option className="text-ink" value="A4_CLASSIC">A4 Classic</option>
+              <option className="text-ink" value="A4_MODERN">A4 Modern</option>
+              <option className="text-ink" value="A5">A5</option>
+              <option className="text-ink" value="THERMAL_3IN">Thermal 3&quot;</option>
+              <option className="text-ink" value="THERMAL_2IN">Thermal 2&quot;</option>
+            </select>
             <button
               onClick={handlePrint}
               className="flex items-center space-x-1.5 px-4 py-1.5 bg-wave-500 hover:bg-wave-600 text-white rounded-lg text-xs font-semibold shadow transition-colors"
@@ -225,26 +257,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoice, o
 
                 <div className="bg-slate-50 p-2 rounded border border-slate-200 flex flex-col items-center justify-center text-center">
                   <div className="w-16 h-16 bg-white border border-slate-300 p-1 flex items-center justify-center rounded">
-                    {/* SVG UPI QR code mockup */}
-                    <svg viewBox="0 0 100 100" className="w-full h-full text-slate-800">
-                      <rect x="0" y="0" width="30" height="30" fill="currentColor" />
-                      <rect x="5" y="5" width="20" height="20" fill="white" />
-                      <rect x="10" y="10" width="10" height="10" fill="currentColor" />
-                      
-                      <rect x="70" y="0" width="30" height="30" fill="currentColor" />
-                      <rect x="75" y="5" width="20" height="20" fill="white" />
-                      <rect x="80" y="10" width="10" height="10" fill="currentColor" />
-                      
-                      <rect x="0" y="70" width="30" height="30" fill="currentColor" />
-                      <rect x="5" y="75" width="20" height="20" fill="white" />
-                      <rect x="10" y="80" width="10" height="10" fill="currentColor" />
-
-                      <rect x="40" y="15" width="20" height="5" fill="currentColor" />
-                      <rect x="45" y="35" width="10" height="30" fill="currentColor" />
-                      <rect x="70" y="50" width="15" height="15" fill="currentColor" />
-                      <rect x="25" y="45" width="15" height="10" fill="currentColor" />
-                      <rect x="65" y="75" width="25" height="15" fill="currentColor" />
-                    </svg>
+                    {qr ? <img src={qr} alt="UPI QR code" className="w-full h-full" /> : <span className="text-[8px] text-slate-400">Add a UPI ID in Store Profile</span>}
                   </div>
                   <span className="text-[9px] font-bold text-slate-600 mt-1">Scan to Pay via UPI</span>
                 </div>
@@ -269,6 +282,12 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoice, o
                   <span>- {formatINR(invoice.totalDiscount)}</span>
                 </div>
               )}
+              {(invoice.charges ?? []).map(c => (
+                <div key={c.label} className="flex justify-between text-slate-600">
+                  <span>{c.label}:</span>
+                  <span className="font-semibold text-slate-900">{formatINR(c.amount)}</span>
+                </div>
+              ))}
               <div className="flex justify-between text-slate-700 font-semibold border-t border-slate-200 pt-1">
                 <span>Taxable Amount:</span>
                 <span>{formatINR(invoice.taxableTotal)}</span>
@@ -296,6 +315,13 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoice, o
                 <span>Total GST:</span>
                 <span className="font-semibold text-slate-900">{formatINR(invoice.totalGst)}</span>
               </div>
+
+              {!!invoice.tcsAmount && (
+                <div className="flex justify-between text-slate-600">
+                  <span>TCS @ {invoice.tcsRate}%:</span>
+                  <span className="font-semibold text-slate-900">{formatINR(invoice.tcsAmount)}</span>
+                </div>
+              )}
 
               {invoice.roundOff !== 0 && (
                 <div className="flex justify-between text-slate-500 text-[10px]">

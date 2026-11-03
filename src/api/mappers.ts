@@ -140,6 +140,7 @@ const toItem = (i: Raw): InvoiceItem => ({
   unit: i.unit ?? 'PCS',
   price: i.price,
   discountPercent: i.discountPercent ?? 0,
+  priceIncludesTax: !!i.priceIncludesTax,
   gstRate: i.gstRate,
   taxableAmount: i.taxableAmount ?? 0,
   cgstAmount: i.cgstAmount ?? 0,
@@ -150,7 +151,7 @@ const toItem = (i: Raw): InvoiceItem => ({
 
 /** Only what the server needs: it recomputes tax and totals itself. */
 export const fromItems = (items: InvoiceItem[]) =>
-  items.map(i => ({ productId: i.productId || undefined, name: i.name, hsnCode: i.hsnCode, unit: i.unit, quantity: i.quantity, price: i.price, discountPercent: i.discountPercent || 0, gstRate: i.gstRate }));
+  items.map(i => ({ productId: i.productId || undefined, name: i.name, hsnCode: i.hsnCode, unit: i.unit, quantity: i.quantity, price: i.price, discountPercent: i.discountPercent || 0, gstRate: i.gstRate, priceIncludesTax: i.priceIncludesTax || undefined }));
 
 export const toInvoice = (i: Raw): Invoice => ({
   id: id(i),
@@ -182,6 +183,15 @@ export const toInvoice = (i: Raw): Invoice => ({
   eInvoiceStatus: i.eInvoice?.status === 'GENERATED' ? 'GENERATED' : i.eInvoice?.status === 'FAILED' ? 'FAILED' : 'NOT_GENERATED',
   irnNumber: i.eInvoice?.status === 'GENERATED' ? i.eInvoice.irn : undefined,
   irnMock: !!i.eInvoice?.mock,
+  billDiscount: i.billDiscount ?? 0,
+  charges: i.charges ?? [],
+  chargesTotal: i.chargesTotal ?? 0,
+  tcsRate: i.tcsRate ?? 0,
+  tcsAmount: i.tcsAmount ?? 0,
+  tdsDeducted: i.tdsDeducted ?? 0,
+  shippingAddress: i.shippingAddress || undefined,
+  poNumber: i.poNumber || undefined,
+  transport: i.transport,
   eWayBillStatus: i.eWayBill?.status === 'GENERATED' ? 'GENERATED' : 'NOT_GENERATED',
   eWayBillNumber: i.eWayBill?.status === 'GENERATED' ? i.eWayBill.number : undefined,
   createdAt: i.createdAt
@@ -286,6 +296,7 @@ export const toPayment = (p: Raw): PaymentTransaction => ({
   invoiceId: p.refType === 'INVOICE' ? String(p.refId) : undefined,
   invoiceNumber: p.refNumber || undefined,
   amount: p.amount,
+  tdsAmount: p.tdsAmount || undefined,
   paymentDate: p.date,
   mode: p.mode,
   referenceNumber: p.reference || p.refNumber || '',

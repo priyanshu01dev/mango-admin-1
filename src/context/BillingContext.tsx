@@ -250,7 +250,13 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
             items: fromItems(inv.items),
             amountPaid: inv.amountPaid || undefined,
             paymentMode: inv.amountPaid ? 'UPI' : undefined,
-            notes: inv.notes || undefined
+            notes: inv.notes || undefined,
+            billDiscount: inv.billDiscount || undefined,
+            charges: inv.charges?.filter(c => c.amount > 0).map(c => ({ label: c.label, amount: c.amount, gstRate: c.gstRate })),
+            tcsRate: inv.tcsRate || undefined,
+            shippingAddress: inv.shippingAddress || undefined,
+            poNumber: inv.poNumber || undefined,
+            transport: inv.transport?.vehicleNumber || inv.transport?.transporterName || inv.transport?.lrNumber ? { ...inv.transport, mode: inv.transport.mode || 'ROAD' } : undefined
           }),
         hi ? 'इनवॉइस बनाई गई' : 'Invoice created'
       );
@@ -300,6 +306,7 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
             partyId: p.partyId,
             invoiceId: p.type === 'PAYMENT_IN' ? p.invoiceId : undefined,
             amount: p.amount,
+            tdsAmount: p.tdsAmount || undefined,
             date: p.paymentDate,
             mode: p.mode,
             reference: p.referenceNumber || undefined,

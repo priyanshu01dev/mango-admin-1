@@ -246,3 +246,94 @@ reportsRouter.get(
     });
   })
 );
+
+/**
+ * GSTR-1 JSON in the GSTN offline-tool / portal upload shape (b2b, b2cl, b2cs, cdnr, hsn).
+ * Values are rounded to 2 decimals; dates are dd-mm-yyyy; fp is MMYYYY.
+ */
+reportsRouter.get(
+  '/gstr1/json',
+  allow(...BOOKS),
+  ah(async (req, res) => {
+    const { from, to, label } = period(req.query);
+    const rules = await compliance();
+    const b = req.business!._id;
+    const seller = req.business!;
+    const invoices = await Invoice.find({ businessId: b, kind: 'TAX_INVOICE', status: { $ne: 'CANCELLED' }, date: { $gte: from, $lte: to } }).lean();
+    const notes = await TradeDocument.find({ businessId: b, docType: 'CREDIT_NOTE', status: { $ne: 'CANCELLED' }, date: { $gte: from, $lte: to }, partyGstin: { $gt: '' } }).lean();
+    const dmy = (iso: string) => `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}`;
+    type Taxed = { gstRate?: number | null; taxableAmount?: number | null; igstAmount?: number | null; cgstAmount?: number | null; sgstAmount?: number | null };
+
+    // one itm per GST rate inside each invoice (charges included at their rate)
+    const itemsByRate = (rows: Taxed[]) => {
+      const m = new Map<number, { txval: number; iamt: number; camt: number; samt: number }>();
+      for (const r of rows) {
+        const rt = r.gstRate ?? 0;
+        const x = m.get(rt) ?? { txval: 0, iamt: 0, camt: 0, samt: 0 };
+        x.txval = r2(x.txval + (r.taxableAmount ?? 0));
+        x.iamt = r2(x.iamt + (r.igstAmount ?? 0));
+        x.camt = r2(x.camt + (r.cgstAmount ?? 0));
+        x.samt = r2(x.samt + (r.sgstAmount ?? 0));
+        m.set(rt, x);
+      }
+      return [...m.entries()].map(([rt, x], i) => ({ num: i + 1, itm_det: { rt, txval: x.txval, iamt: x.iamt, camt: x.camt, samt: x.samt, csamt: 0 } }));
+    };
+    const taxedRows = (i: { items: Taxed[]; charges?: Taxed[] }) => [...i.items, ...(i.charges ?? [])];
+
+    const b2bMap = new Map<string, unknown[]>();
+    const b2clMap = new Map<string, unknown[]>();
+    const b2cs = new Map<string, { sply_ty: string; pos: string; typ: string; rt: number; txval: number; iamt: number; camt: number; samt: number; csamt: number }>();
+    for (const i of invoices) {
+      const inv = { inum: i.number, idt: dmy(i.date), val: r2(i.grandTotal), pos: i.placeOfSupply, rchrg: i.reverseCharge ? 'Y' : 'N', inv_typ: 'R', itms: itemsByRate(taxedRows(i as never)) };
+      if (i.partyGstin) {
+        b2bMap.set(i.partyGstin, [...(b2bMap.get(i.partyGstin) ?? []), inv]);
+      } else if (i.isInterState && i.grandTotal > rules.b2clInvoiceThreshold) {
+        const { rchrg: _r, inv_typ: _t, ...b2clInv } = inv;
+        b2clMap.set(i.placeOfSupply, [...(b2clMap.get(i.placeOfSupply) ?? []), b2clInv]);
+      } else {
+        for (const it of itemsByRate(taxedRows(i as never))) {
+          const k = `${i.placeOfSupply}|${it.itm_det.rt}`;
+          const row = b2cs.get(k) ?? { sply_ty: i.isInterState ? 'INTER' : 'INTRA', pos: i.placeOfSupply, typ: 'OE', rt: it.itm_det.rt, txval: 0, iamt: 0, camt: 0, samt: 0, csamt: 0 };
+          row.txval = r2(row.txval + it.itm_det.txval);
+          row.iamt = r2(row.iamt + it.itm_det.iamt);
+          row.camt = r2(row.camt + it.itm_det.camt);
+          row.samt = r2(row.samt + it.itm_det.samt);
+          b2cs.set(k, row);
+        }
+      }
+    }
+
+    const cdnrMap = new Map<string, unknown[]>();
+    for (const n of notes) {
+      const nt = { ntty: 'C', nt_num: n.number, nt_dt: dmy(n.date), val: r2(n.grandTotal), pos: n.partyStateCode, rchrg: 'N', inv_typ: 'R', itms: itemsByRate(n.items as Taxed[]) };
+      cdnrMap.set(n.partyGstin!, [...(cdnrMap.get(n.partyGstin!) ?? []), nt]);
+    }
+
+    const hsn = new Map<string, { num: number; hsn_sc: string; desc: string; uqc: string; qty: number; rt: number; txval: number; iamt: number; camt: number; samt: number; csamt: number }>();
+    for (const i of invoices)
+      for (const it of i.items) {
+        const k = `${it.hsnCode}|${it.gstRate}`;
+        const h = hsn.get(k) ?? { num: hsn.size + 1, hsn_sc: it.hsnCode, desc: it.name.slice(0, 30), uqc: (it.unit ?? 'NOS').toUpperCase(), qty: 0, rt: it.gstRate, txval: 0, iamt: 0, camt: 0, samt: 0, csamt: 0 };
+        h.qty = r2(h.qty + it.quantity);
+        h.txval = r2(h.txval + (it.taxableAmount ?? 0));
+        h.iamt = r2(h.iamt + (it.igstAmount ?? 0));
+        h.camt = r2(h.camt + (it.cgstAmount ?? 0));
+        h.samt = r2(h.samt + (it.sgstAmount ?? 0));
+        hsn.set(k, h);
+      }
+
+    const json = {
+      gstin: seller.gstin,
+      fp: label.slice(5, 7) + label.slice(0, 4),
+      version: 'GST3.2',
+      hash: 'hash',
+      b2b: [...b2bMap.entries()].map(([ctin, inv]) => ({ ctin, inv })),
+      b2cl: [...b2clMap.entries()].map(([pos, inv]) => ({ pos, inv })),
+      b2cs: [...b2cs.values()],
+      cdnr: [...cdnrMap.entries()].map(([ctin, nt]) => ({ ctin, nt })),
+      hsn: { data: [...hsn.values()] }
+    };
+    res.setHeader('Content-Disposition', `attachment; filename="GSTR1_${seller.gstin || 'NA'}_${json.fp}.json"`);
+    res.json(json);
+  })
+);

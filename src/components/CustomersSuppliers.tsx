@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useBilling } from '../context/BillingContext';
+import { ImportButton } from './ImportButton';
 import { Party } from '../types';
 import { formatINR, TRANSLATIONS, INDIAN_STATES } from '../utils/formatters';
 import { Users2, PlusCircle, Search, Phone, Mail, MapPin, Building, ArrowUpRight, ArrowDownLeft, X, FileText } from 'lucide-react';
@@ -129,13 +130,16 @@ export const CustomersSuppliers: React.FC = () => {
           </div>
         </div>
 
+        <div className="flex items-center gap-2">
+          <ImportButton kind="parties" defaultType={activeTab} />
         <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center space-x-1.5 bg-mango-500 hover:bg-mango-600 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow-md shadow-mango-500/25"
-        >
-          <PlusCircle className="w-4 h-4" />
-          <span>+ Add {activeTab === 'CUSTOMER' ? 'Customer' : 'Supplier'}</span>
-        </button>
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center space-x-1.5 bg-mango-500 hover:bg-mango-600 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow-md shadow-mango-500/25"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>+ Add {activeTab === 'CUSTOMER' ? 'Customer' : 'Supplier'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Parties Table */}
