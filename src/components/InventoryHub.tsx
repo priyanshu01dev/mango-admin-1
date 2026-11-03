@@ -320,8 +320,10 @@ const BarcodeLabels: React.FC = () => {
       .l{border:1px dashed #ccc;padding:2mm;text-align:center;break-inside:avoid} .l svg{max-width:100%}
       .n{font-size:9px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .p{font-size:11px;font-weight:800}
       </style></head><body><div class="g">${labels.join('')}</div><p style="font-size:9px;color:#999;text-align:center">${activeBusiness.tradeName || activeBusiness.name}</p>
-      <script>window.onload=()=>window.print()</script></body></html>`);
+      </body></html>`);
     w.document.close();
+  // printed from the opener: the page's Content-Security-Policy blocks inline scripts in this window
+  setTimeout(() => { w.focus(); w.print(); }, 350);
   };
 
   return (

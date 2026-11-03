@@ -689,3 +689,30 @@ describe('Phase 3: Razorpay, email, reminders, e-invoice JSON', () => {
     assert.deepEqual(mails.map(m => m.to), ['accounts@buyer.test', 'ca@firm.test', 'accounts@buyer.test']);
   });
 });
+
+
+describe('Launch: account deletion', () => {
+  test('owners are blocked until the business deletion is requested; staff can delete their login', async () => {
+    const owner = await login('9810000060');
+    const b = await request(app).post('/api/businesses').set('Authorization', `Bearer ${owner.accessToken}`).send({ name: 'Delete Me Traders', stateCode: '07' });
+    const h = { Authorization: `Bearer ${owner.accessToken}`, 'X-Business-Id': b.body._id };
+    await request(app).post('/api/businesses/current/members').set(h).send({ phone: '9810000061', role: 'SALESMAN' });
+    const staff = await login('9810000061');
+
+    const blocked = await request(app).delete('/api/auth/me').set('Authorization', `Bearer ${owner.accessToken}`).send({ confirm: 'DELETE' });
+    assert.equal(blocked.status, 409);
+    const noConfirm = await request(app).delete('/api/auth/me').set('Authorization', `Bearer ${staff.accessToken}`).send({});
+    assert.equal(noConfirm.status, 400);
+    const ok = await request(app).delete('/api/auth/me').set('Authorization', `Bearer ${staff.accessToken}`).send({ confirm: 'DELETE' });
+    assert.equal(ok.status, 200, JSON.stringify(ok.body));
+    // the session is gone and the personal data removed
+    assert.equal((await request(app).post('/api/auth/refresh').send({ refreshToken: staff.refreshToken })).status, 401);
+    const { User } = await import('../src/models/core');
+    const u = await User.findOne({ name: 'Deleted user' }).lean();
+    assert.ok(u && !u.phone && u.status === 'BLOCKED');
+
+    await request(app).post('/api/businesses/current/deletion-request').set(h).send({ confirmName: 'Delete Me Traders' });
+    const nowOk = await request(app).delete('/api/auth/me').set('Authorization', `Bearer ${owner.accessToken}`).send({ confirm: 'DELETE' });
+    assert.equal(nowOk.status, 200);
+  });
+});

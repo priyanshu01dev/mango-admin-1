@@ -51,10 +51,10 @@ Business-scoped routes need `Authorization: Bearer <token>` and `X-Business-Id: 
 | Support & billing | `GET/POST /api/tickets`, `POST /tickets/:id/messages` · `GET /api/plans` · `POST /api/billing/quote` |
 | Super admin | `/api/admin/analytics`, `/merchants` (+ `/:id`, `/status`, `/extend-trial`, `/subscription`, `/notes`), `/plans`, `/subscriptions`, `/coupons`, `/tickets`, `/flags`, `/broadcasts`, `/compliance`, `/audit` |
 
-## Not built yet (needed before launch)
+## Deploying
 
-- **GSP integration** (IRIS, Masters India, …) for real IRNs and e-way bills. `services/gsp.ts` has the pre-validation and the provider hook.
-- **Razorpay / Play Billing checkout and webhooks.** `POST /api/billing/checkout` returns 503 until then. Plans can be activated manually from the admin API.
-- **Delivery workers** for broadcasts (FCM, WhatsApp, SMS) and payment reminders. Broadcasts are stored as QUEUED or SCHEDULED.
-- **Wiring the web admin panel** to this API. It still uses its own mock data in localStorage.
-- **Production setup:** MongoDB Atlas (Mumbai), secrets in a secret manager, HTTPS, backups, monitoring, and privacy policy / data-deletion endpoints.
+See [`../DEPLOY.md`](../DEPLOY.md): Docker image, MongoDB Atlas, environment variables, Razorpay webhook and the launch checklist.
+
+## Still to come
+- Direct GSP adapter for IRN / e-way bill and GST filing (the IRP / EWB portal JSON flow works without one)
+- Push notifications and Google Play Billing (with the mobile app)

@@ -147,6 +147,9 @@ module.exports = mongoose.model('Invoice', InvoiceSchema);`;
   return (
     <div className="space-y-6">
       {/* Top Banner & Architecture Blueprint */}
+      <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs rounded-xl p-3">
+        <b>Design reference only.</b> The live API is under <code className="font-mono">/api/…</code> (OTP login, <code className="font-mono">X-Business-Id</code> header). The full, current endpoint list is in <code className="font-mono">server/README.md</code>.
+      </div>
       <div className="bg-white border border-mango-100 p-5 rounded-2xl shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-mango-100">
           <div>

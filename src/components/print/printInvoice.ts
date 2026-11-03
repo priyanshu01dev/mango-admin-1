@@ -171,6 +171,8 @@ export async function printInvoice(inv: Invoice, biz: BusinessProfile, o: PrintO
   w.document.open();
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title>${esc(inv.invoiceNumber)}</title>
 <style>body{font-family:system-ui,'Noto Sans Devanagari',sans-serif;color:#2a1f17;margin:0;padding:8px} .r{text-align:right} .muted{color:#78716c}</style>
-</head><body>${body}${watermark}<script>window.onload=()=>{window.focus();window.print();}</script></body></html>`);
+</head><body>${body}${watermark}</body></html>`);
   w.document.close();
+  // printed from the opener: the page's Content-Security-Policy blocks inline scripts in this window
+  setTimeout(() => { w.focus(); w.print(); }, 350);
 }

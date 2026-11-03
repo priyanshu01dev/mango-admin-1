@@ -59,6 +59,8 @@ ${doc.roundOff ? `<tr><td>Round off</td><td class="r">${money(doc.roundOff)}</td
 ${doc.notes ? `<p class="muted">${esc(doc.notes)}</p>` : ''}
 <p class="r" style="margin-top:40px">${esc(biz.signatureText || 'Authorised signatory')}</p>
 <p class="muted" style="text-align:center;margin-top:24px">Generated with Mango Invoice · Powered by First Wave</p>
-<script>window.print()</script></body></html>`);
+</body></html>`);
   w.document.close();
+  // printed from the opener: the page's Content-Security-Policy blocks inline scripts in this window
+  setTimeout(() => { w.focus(); w.print(); }, 350);
 }

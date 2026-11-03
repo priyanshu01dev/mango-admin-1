@@ -51,7 +51,8 @@ async function main() {
   await disconnectDb();
 }
 
-if (process.argv[1]?.replace(/\\/g, '/').endsWith('server/src/seed.ts')) {
+// runs when executed directly: tsx server/src/seed.ts (dev) or node dist-server/seed.js (production)
+if (/seed\.(ts|js)$/.test(process.argv[1] ?? '')) {
   main().catch(err => {
     console.error(err);
     process.exit(1);

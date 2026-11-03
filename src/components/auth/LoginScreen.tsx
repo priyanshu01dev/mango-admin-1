@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { errMsg } from '../../api/client';
 import { inputCls, PrimaryButton, SegmentedTabs } from '../admin/ui';
 import { Smartphone, Mail, ShieldCheck } from 'lucide-react';
+import { LegalLinks } from '../legal/LegalPages';
 
 export const LoginScreen: React.FC = () => {
   const { loginWithEmail, requestOtp, verifyOtp } = useAuth();
@@ -107,7 +108,9 @@ export const LoginScreen: React.FC = () => {
           {error && <div className="text-[11px] text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-2">{error}</div>}
         </div>
 
-        <p className="text-center text-[10px] text-stone-400 mt-4 flex items-center justify-center gap-1">
+        <p className="text-center text-[10px] text-stone-400 mt-4">By continuing you agree to the <a href="/terms" className="underline">Terms</a> and <a href="/privacy" className="underline">Privacy Policy</a>.</p>
+        <div className="mt-2"><LegalLinks /></div>
+        <p className="text-center text-[10px] text-stone-400 mt-2 flex items-center justify-center gap-1">
           <ShieldCheck className="w-3 h-3 text-leaf-600" /> Powered by <span className="font-bold text-wave-500">First Wave</span>
         </p>
       </div>

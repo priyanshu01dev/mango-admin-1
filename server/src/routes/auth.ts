@@ -2,7 +2,8 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { ah, unauthorized } from '../lib/errors';
-import { Membership, User } from '../models/core';
+import { Business, Membership, RefreshToken, User } from '../models/core';
+import { conflict } from '../lib/errors';
 import { requireAuth } from '../middleware/auth';
 import { checkPassword, issueRefreshToken, requestOtp, revokeRefreshToken, rotateRefreshToken, signAccessToken, verifyOtp } from '../services/auth';
 import { audit } from '../services/common';
@@ -101,5 +102,28 @@ authRouter.patch(
     const body = z.object({ name: z.string().max(80).optional(), language: z.enum(['en', 'hi']).optional() }).parse(req.body);
     await User.updateOne({ _id: req.user!._id }, body);
     res.json(await profile(req.user!._id));
+  })
+);
+
+/**
+ * Deletes the caller's own login (Play data-safety: in-app account deletion).
+ * Owners must first request deletion of their business (business books are kept for the GST retention period).
+ */
+authRouter.delete(
+  '/me',
+  requireAuth,
+  ah(async (req, res) => {
+    z.object({ confirm: z.literal('DELETE') }).parse(req.body);
+    const uid = req.user!._id;
+    if (req.user!.platformRole) throw conflict('Platform admin accounts are removed by another super admin');
+    const owned = await Membership.find({ userId: uid, role: 'OWNER', status: 'ACTIVE' }).lean();
+    const open = await Business.countDocuments({ _id: { $in: owned.map(m => m.businessId) }, deletionRequestedAt: null });
+    if (open) throw conflict('You own a business. Request deletion of the business first (Settings → Store Profile), or hand it over to another owner.');
+    await Membership.updateMany({ userId: uid }, { status: 'REMOVED' });
+    await RefreshToken.updateMany({ userId: uid, revokedAt: null }, { revokedAt: new Date() });
+    // keep the row for the audit trail, drop personal data
+    await User.updateOne({ _id: uid }, { $set: { name: 'Deleted user', status: 'BLOCKED' }, $unset: { phone: 1, email: 1, passwordHash: 1 } });
+    await audit(req, 'ACCOUNT_DELETE', `User ${uid} deleted their account`, 'WARNING', null);
+    res.json({ ok: true });
   })
 );

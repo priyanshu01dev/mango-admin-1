@@ -65,9 +65,9 @@ export const Inventory: React.FC = () => {
   const totalStockValue = filteredProducts.reduce((acc, p) => acc + p.currentStock * p.purchasePrice, 0);
   const lowStockCount = products.filter(p => p.businessId === activeBusiness.id && p.currentStock <= p.minStockAlert).length;
 
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    addProduct({
+    const ok = await addProduct({
       businessId: activeBusiness.id,
       name,
       sku: sku || 'SKU-' + Date.now().toString().slice(-4),
@@ -85,6 +85,7 @@ export const Inventory: React.FC = () => {
       attributes: { ...(size ? { Size: size } : {}), ...(colour ? { Colour: colour } : {}) },
       variantOf: variantOf || null
     });
+    if (!ok) return; // keep what was typed so it can be fixed
     setIsAddModalOpen(false);
     setBarcode('');
     setSize('');
@@ -94,11 +95,12 @@ export const Inventory: React.FC = () => {
     setSku('');
   };
 
-  const handleStockAdjustmentSubmit = (e: React.FormEvent) => {
+  const handleStockAdjustmentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adjustingProduct) return;
     const change = adjustType === 'IN' ? Math.abs(adjustQty) : -Math.abs(adjustQty);
-    adjustProductStock(adjustingProduct.id, change, adjustReason);
+    const ok = await adjustProductStock(adjustingProduct.id, change, adjustReason);
+    if (!ok) return; // keep what was typed so it can be fixed
     setAdjustingProduct(null);
   };
 

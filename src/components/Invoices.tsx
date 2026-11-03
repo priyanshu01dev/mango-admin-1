@@ -324,11 +324,11 @@ export const Invoices: React.FC<InvoicesProps> = ({
     if (ok) setIsCreateModalOpen(false);
   };
 
-  const handleRecordPaymentSubmit = (e: React.FormEvent) => {
+  const handleRecordPaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!payingInvoice) return;
 
-    recordPayment({
+    const ok = await recordPayment({
       businessId: activeBusiness.id,
       type: 'PAYMENT_IN',
       partyId: payingInvoice.customerId,
@@ -343,6 +343,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
       notes: 'Recorded via Invoices dashboard'
     });
 
+    if (!ok) return; // keep what was typed so it can be fixed
     setPayingInvoice(null);
   };
 

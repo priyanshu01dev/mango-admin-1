@@ -38,10 +38,10 @@ export const Payments: React.FC = () => {
     .filter(p => p.businessId === activeBusiness.id && p.type === 'PAYMENT_OUT')
     .reduce((acc, p) => acc + p.amount, 0);
 
-  const handleSavePayment = (e: React.FormEvent) => {
+  const handleSavePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     const party = parties.find(p => p.id === selectedPartyId);
-    recordPayment({
+    const ok = await recordPayment({
       businessId: activeBusiness.id,
       type: payType,
       partyId: selectedPartyId,
@@ -53,6 +53,7 @@ export const Payments: React.FC = () => {
       notes
     });
 
+    if (!ok) return; // keep what was typed so it can be fixed
     setIsModalOpen(false);
   };
 

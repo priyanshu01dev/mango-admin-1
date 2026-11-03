@@ -43,8 +43,10 @@ ${(s.merchantGstin || s.sellerStateCode || '').slice(0, 2) === (s.sellerStateCod
   : `<tr><td colspan="2" class="r">IGST ${GST_ON_SUBSCRIPTION}%</td><td class="r">${s.gstAmount.toFixed(2)}</td></tr>`}
 <tr><th colspan="2" class="r">Total</th><th class="r">₹${s.totalAmount.toFixed(2)}</th></tr></table>
 <p class="muted">Paid via ${s.gateway.replace('_', ' ')}. Reverse charge: No. This is a computer generated invoice.</p>
-<script>window.print()</script></body></html>`);
+</body></html>`);
   w.document.close();
+  // printed from the opener: the page's Content-Security-Policy blocks inline scripts in this window
+  setTimeout(() => { w.focus(); w.print(); }, 350);
 }
 
 export const Subscriptions: React.FC = () => {

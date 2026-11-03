@@ -120,7 +120,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
   ];
 
   // merchants (no platform role) only see their own workspace
-  const visibleSections = isPlatformAdmin ? sections : sections.slice(1);
+  // merchants don't see platform pages or the developer API reference
+  const visibleSections = isPlatformAdmin ? sections : sections.slice(1).map(sec => ({ ...sec, items: sec.items.filter(i => i.id !== 'api') }));
 
   return (
     <aside className="w-64 bg-white/80 backdrop-blur border-r border-mango-100 flex flex-col shrink-0 no-print">

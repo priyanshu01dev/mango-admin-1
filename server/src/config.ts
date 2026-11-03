@@ -42,6 +42,8 @@ const Env = z.object({
   PLATFORM_STATE_CODE: z.string().default('22'),
   // 32-byte key (base64) for encrypting stored third-party credentials (AES-256-GCM)
   SECRETS_KEY: z.string().optional(),
+  // folder with the built web app (vite build → dist); served by the API in production
+  STATIC_DIR: z.string().default(''),
   TRIAL_DAYS: z.coerce.number().default(7),
   TRIAL_PLAN: z.enum(['silver', 'gold', 'platinum']).default('gold')
 });
@@ -54,9 +56,25 @@ if (!parsed.success) {
 
 export const config = parsed.data;
 
+/** Refuses to start in production with settings that are only safe on a laptop. */
+export function productionProblems(c: typeof config) {
+  const p: string[] = [];
+  if (c.SMS_PROVIDER === 'console') p.push('SMS_PROVIDER=console: OTPs would be printed instead of sent. Configure MSG91.');
+  if (c.SMS_PROVIDER === 'msg91' && (!c.MSG91_AUTH_KEY || !c.MSG91_OTP_TEMPLATE_ID)) p.push('MSG91_AUTH_KEY and MSG91_OTP_TEMPLATE_ID are required for OTP login');
+  if (c.GSP_MODE === 'mock') p.push('GSP_MODE=mock: mock IRNs are not valid tax invoices');
+  if (/127\.0\.0\.1|localhost/.test(c.MONGODB_URI)) p.push('MONGODB_URI points to localhost: use MongoDB Atlas (Mumbai) or a managed replica set');
+  if (!c.APP_URL.startsWith('https://')) p.push('APP_URL must be the public https:// address of the app');
+  if (c.CORS_ORIGINS.split(',').some(o => /localhost|127\.0\.0\.1/.test(o))) p.push('CORS_ORIGINS still allows localhost');
+  if (c.JWT_ACCESS_SECRET === c.JWT_REFRESH_SECRET) p.push('JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be different');
+  return p;
+}
+
 if (config.NODE_ENV === 'production') {
-  if (config.SMS_PROVIDER === 'console') throw new Error('SMS_PROVIDER=console is not allowed in production');
-  if (config.GSP_MODE === 'mock') throw new Error('GSP_MODE=mock is not allowed in production: mock IRNs are not valid tax invoices');
+  const problems = productionProblems(config);
+  if (problems.length) {
+    console.error('❌ Not safe to run in production:\n' + problems.map(x => '  - ' + x).join('\n'));
+    process.exit(1);
+  }
 }
 
 export const isProd = config.NODE_ENV === 'production';

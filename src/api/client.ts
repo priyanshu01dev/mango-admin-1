@@ -68,7 +68,9 @@ async function refresh(): Promise<boolean> {
 }
 
 export async function api<T = unknown>(method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE', path: string, body?: unknown, retry = true): Promise<T> {
-  if (!accessToken && retry && session.hasRefreshToken() && !path.startsWith('/api/auth/')) await refresh();
+  // login / OTP / refresh calls never need (or trigger) a token refresh; /api/auth/me does
+  const isLoginCall = /^\/api\/auth\/(otp|login|refresh|logout)/.test(path);
+  if (!accessToken && retry && session.hasRefreshToken() && !isLoginCall) await refresh();
   const headers: Record<string, string> = { 'X-Platform': 'Web' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
@@ -82,7 +84,7 @@ export async function api<T = unknown>(method: 'GET' | 'POST' | 'PATCH' | 'PUT' 
     throw new ApiError(0, 'Cannot reach the server. Is the API running?', 'NETWORK');
   }
 
-  if (res.status === 401 && retry && !path.startsWith('/api/auth/')) {
+  if (res.status === 401 && retry && !isLoginCall) {
     if (await refresh()) return api<T>(method, path, body, false);
     session.clear();
     onSessionExpired?.();
@@ -100,7 +102,7 @@ export const get = <T>(path: string) => api<T>('GET', path);
 export const post = <T>(path: string, body?: unknown) => api<T>('POST', path, body ?? {});
 export const patch = <T>(path: string, body: unknown) => api<T>('PATCH', path, body);
 export const put = <T>(path: string, body: unknown) => api<T>('PUT', path, body);
-export const del = <T>(path: string) => api<T>('DELETE', path);
+export const del = <T>(path: string, body?: unknown) => api<T>('DELETE', path, body);
 
 /** Downloads a non-JSON response (XML, CSV…) with the same auth headers and token refresh as api(). */
 export async function download(path: string, filename: string, retry = true): Promise<void> {

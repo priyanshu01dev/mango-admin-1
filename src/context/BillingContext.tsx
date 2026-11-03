@@ -68,20 +68,20 @@ interface BillingContextType {
   generateEInvoice: (invoiceId: string) => void;
 
   quotations: Quotation[];
-  addQuotation: (quotation: Omit<Quotation, 'id'>) => void;
+  addQuotation: (quotation: Omit<Quotation, 'id'>) => Promise<boolean>;
   convertQuotationToInvoice: (quotationId: string) => void;
 
   products: Product[];
-  addProduct: (product: Omit<Product, 'id'>) => void;
-  updateProduct: (product: Product) => void;
-  adjustProductStock: (productId: string, quantityChange: number, reason: string) => void;
+  addProduct: (product: Omit<Product, 'id'>) => Promise<boolean>;
+  updateProduct: (product: Product) => Promise<boolean>;
+  adjustProductStock: (productId: string, quantityChange: number, reason: string) => Promise<boolean>;
 
   parties: Party[];
-  addParty: (party: Omit<Party, 'id'>) => void;
-  updateParty: (party: Party) => void;
+  addParty: (party: Omit<Party, 'id'>) => Promise<boolean>;
+  updateParty: (party: Party) => Promise<boolean>;
 
   payments: PaymentTransaction[];
-  recordPayment: (payment: Omit<PaymentTransaction, 'id'>) => void;
+  recordPayment: (payment: Omit<PaymentTransaction, 'id'>) => Promise<boolean>;
 
   // other documents and expenses (used by DocumentsContext)
   tradeDocs: TradeDocument[];
@@ -113,11 +113,24 @@ const EMPTY_BUSINESS: BusinessProfile = {
 const ALL_DOC_TYPES = 'QUOTATION,PROFORMA,SALES_ORDER,DELIVERY_CHALLAN,CREDIT_NOTE,PURCHASE_ORDER,PURCHASE_BILL,DEBIT_NOTE';
 const EMPTY_RAW = { parties: [], products: [], invoices: [], payments: [], docs: [], expenses: [], audit: [] };
 
-/** Returns [] when the role may not see a list (403), so screens still render for salesmen / CAs. */
+/**
+ * Loads every page of a list (200 per request, up to 5,000 rows). Returns [] when the role may not
+ * see the list (403), so screens still render for salesmen / CAs.
+ */
+const MAX_ROWS = 5000;
 const listOrEmpty = async (path: string): Promise<Raw[]> => {
   try {
-    const r = await get<{ items: Raw[] } | Raw[]>(path);
-    return Array.isArray(r) ? r : r.items;
+    const first = await get<{ items: Raw[]; total?: number } | Raw[]>(path);
+    if (Array.isArray(first)) return first;
+    const rows = [...first.items];
+    const total = Math.min(first.total ?? rows.length, MAX_ROWS);
+    const sep = path.includes('?') ? '&' : '?';
+    while (rows.length < total) {
+      const next = await get<{ items: Raw[] }>(`${path}${sep}skip=${rows.length}`);
+      if (!next.items.length) break;
+      rows.push(...next.items);
+    }
+    return rows;
   } catch (e) {
     if ((e as { status?: number }).status === 403) return [];
     throw e;
@@ -281,28 +294,28 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     quotations,
     addQuotation: q =>
-      void act(
+      act(
         () => post('/api/documents', { docType: 'QUOTATION', partyId: q.customerId, date: q.date, dueDate: q.validUntil, items: fromItems(q.items), notes: q.notes || undefined }),
         hi ? 'कोटेशन सेव हुआ' : 'Quotation saved'
       ),
     convertQuotationToInvoice: id => void act(() => post(`/api/documents/${id}/convert`), 'Quotation converted to invoice'),
 
     products,
-    addProduct: p => void act(() => post('/api/products', fromProduct(p, true)), `Item ${p.name} added`),
-    updateProduct: p => void act(() => patch(`/api/products/${p.id}`, fromProduct(p, false)), 'Item updated'),
+    addProduct: p => act(() => post('/api/products', fromProduct(p, true)), `Item ${p.name} added`),
+    updateProduct: p => act(() => patch(`/api/products/${p.id}`, fromProduct(p, false)), 'Item updated'),
     adjustProductStock: (id, qty, reason) =>
-      void act(() => post(`/api/products/${id}/adjust`, { quantity: qty, reason: reason.length >= 2 ? reason : 'Manual adjustment' }), `Stock ${qty > 0 ? '+' : ''}${qty}`),
+      act(() => post(`/api/products/${id}/adjust`, { quantity: qty, reason: reason.length >= 2 ? reason : 'Manual adjustment' }), `Stock ${qty > 0 ? '+' : ''}${qty}`),
 
     parties,
-    addParty: p => void act(() => post('/api/parties', fromParty(p)), `${p.name} added`),
+    addParty: p => act(() => post('/api/parties', fromParty(p)), `${p.name} added`),
     updateParty: p => {
       const { type: _t, openingBalance: _o, ...rest } = fromParty(p);
-      void act(() => patch(`/api/parties/${p.id}`, rest), 'Party updated');
+      return act(() => patch(`/api/parties/${p.id}`, rest), 'Party updated');
     },
 
     payments,
     recordPayment: p =>
-      void act(
+      act(
         () =>
           post('/api/payments', {
             type: p.type,

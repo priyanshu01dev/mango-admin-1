@@ -52,7 +52,7 @@ export const Quotations: React.FC = () => {
     return matchesBiz && matchesSearch;
   });
 
-  const handleSaveQuotation = (e: React.FormEvent) => {
+  const handleSaveQuotation = async (e: React.FormEvent) => {
     e.preventDefault();
     const cust = parties.find(p => p.id === selectedCustomerId);
     const validUntilDate = new Date();
@@ -61,7 +61,7 @@ export const Quotations: React.FC = () => {
     const isInter = cust ? cust.stateCode !== activeBusiness.stateCode : false;
     const grandTotal = formItems.reduce((acc, i) => acc + i.totalAmount, 0);
 
-    addQuotation({
+    const ok = await addQuotation({
       quotationNumber: quotNumber,
       businessId: activeBusiness.id,
       customerId: selectedCustomerId,
@@ -79,6 +79,7 @@ export const Quotations: React.FC = () => {
       notes
     });
 
+    if (!ok) return; // keep what was typed so it can be fixed
     setIsModalOpen(false);
   };
 

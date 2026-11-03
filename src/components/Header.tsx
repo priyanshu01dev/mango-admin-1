@@ -69,7 +69,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice }) => {
             />
             <div>
               <div className="text-[11px] font-medium text-stone-500">
-                {greeting}, {displayName}{isPlatformAdmin ? ' · Super Admin' : ''}
+                {greeting}, {displayName}{isPlatformAdmin && !/admin/i.test(displayName) ? ' · Super Admin' : ''}
               </div>
               <div className="flex items-center space-x-1.5">
                 <span className="text-sm font-black text-ink max-w-[220px] truncate">

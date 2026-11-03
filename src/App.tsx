@@ -31,6 +31,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginScreen } from './components/auth/LoginScreen';
 import { CreateBusiness } from './components/auth/CreateBusiness';
 import { CheckCircle2 } from 'lucide-react';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const PLATFORM_TABS: NavTab[] = ['overview', 'merchants', 'subscriptions', 'support', 'flags', 'broadcasts', 'integrations'];
 
@@ -42,7 +43,7 @@ const AppContent: React.FC = () => {
 
   const isPlatformTab = PLATFORM_TABS.includes(activeTab);
   // platform pages need a platform role; merchant pages need a business
-  const blockedPlatform = isPlatformTab && !isPlatformAdmin;
+  const blockedPlatform = (isPlatformTab || activeTab === 'api') && !isPlatformAdmin;
   const needsBusiness = !isPlatformTab && activeTab !== 'api' && !activeBusinessId;
   const waitingForBusiness = !isPlatformTab && activeTab !== 'api' && !!activeBusinessId && !hasBusiness;
 
@@ -70,7 +71,7 @@ const AppContent: React.FC = () => {
             {blockedPlatform && <div className="text-center text-stone-500 text-xs py-20">Platform admin access is required for this page.</div>}
             {needsBusiness && <CreateBusiness />}
             {waitingForBusiness && <div className="text-center text-stone-500 text-xs py-20">{loading ? 'Loading your business…' : 'Could not load this business.'}</div>}
-            {!blockedPlatform && !needsBusiness && !waitingForBusiness && (<React.Fragment key={activeBusinessId ?? 'platform'}>
+            {!blockedPlatform && !needsBusiness && !waitingForBusiness && (<ErrorBoundary key={`${activeBusinessId ?? 'platform'}:${activeTab}`}>
             {activeTab === 'overview' && <PlatformOverview onNavigate={setActiveTab} />}
             {activeTab === 'merchants' && <Merchants />}
             {activeTab === 'support' && <SupportTickets />}
@@ -118,7 +119,7 @@ const AppContent: React.FC = () => {
             {activeTab === 'api' && <AndroidApiExplorer />}
 
             {activeTab === 'audit' && <AuditSettings />}
-            </React.Fragment>)}
+            </ErrorBoundary>)}
           </div>
         </main>
       </div>

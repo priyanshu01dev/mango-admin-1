@@ -9,3 +9,5 @@ coverage/
 dist-server/
 .data/
 .idea/
+test-results/
+playwright-report/

@@ -43,9 +43,9 @@ export const CustomersSuppliers: React.FC = () => {
     .filter(p => p.businessId === activeBusiness.id && p.type === 'SUPPLIER')
     .reduce((acc, p) => acc + Math.abs(p.currentBalance), 0);
 
-  const handleSaveParty = (e: React.FormEvent) => {
+  const handleSaveParty = async (e: React.FormEvent) => {
     e.preventDefault();
-    addParty({
+    const ok = await addParty({
       businessId: activeBusiness.id,
       type: activeTab,
       name,
@@ -63,6 +63,7 @@ export const CustomersSuppliers: React.FC = () => {
       status: 'ACTIVE'
     });
 
+    if (!ok) return; // keep what was typed so it can be fixed
     setIsAddModalOpen(false);
     setName('');
     setPhone('+91 ');

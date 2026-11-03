@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'feat/**']
+  pull_request:
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Type-check web
+        run: npx tsc --noEmit
+      - name: Type-check server
+        run: npm run server:lint
+      - name: Cache MongoDB test binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongodb-binaries-${{ runner.os }}-v1
+      - name: API tests (real MongoDB replica set)
+        run: npm run server:test
+      - name: Build
+        run: npm run build && npm run server:build
+      - name: Docker image builds
+        run: docker build -t mango-invoice:ci .

@@ -114,6 +114,13 @@ export const MultiLineChart: React.FC<{
   const x = (i: number) => padL + (i / (dates.length - 1)) * plotW;
   const y = (v: number) => padT + plotH - (v / max) * plotH;
   const ticks = [0, 0.5, 1].map(f => f * max);
+  // end-of-line labels: push apart when two lines finish close together
+  const labelY = series.map(s => y(s.values[s.values.length - 1]));
+  const order = labelY.map((v, i) => i).sort((a, b) => labelY[a] - labelY[b]);
+  for (let k = 1; k < order.length; k++) {
+    const prev = labelY[order[k - 1]];
+    if (labelY[order[k]] - prev < 12) labelY[order[k]] = prev + 12;
+  }
 
   return (
     <div className="relative" onMouseLeave={() => setHover(null)}>
@@ -149,7 +156,7 @@ export const MultiLineChart: React.FC<{
               points={s.values.map((v, i) => `${x(i)},${y(v)}`).join(' ')}
             />
             {hover !== null && <circle cx={x(hover)} cy={y(s.values[hover])} r={4} fill={s.color} stroke="#fff" strokeWidth={2} />}
-            <text x={W - padR + 6} y={y(s.values[s.values.length - 1]) + 3} fontSize={10} fontWeight={700} fill="#44403c">
+            <text x={W - padR + 6} y={labelY[series.indexOf(s)] + 3} fontSize={10} fontWeight={700} fill="#44403c">
               {s.name}
             </text>
           </g>
