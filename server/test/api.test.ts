@@ -13,6 +13,11 @@ process.env.JWT_ACCESS_SECRET = 'test-access-secret-test-access-secret-123';
 process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-test-refresh-secret-12';
 process.env.SMS_PROVIDER = 'console';
 process.env.GSP_MODE = 'mock';
+process.env.RAZORPAY_KEY_ID = 'rzp_test_key';
+process.env.RAZORPAY_KEY_SECRET = 'rzp_test_secret';
+process.env.RAZORPAY_WEBHOOK_SECRET = 'rzp_webhook_secret';
+process.env.SMTP_HOST = 'smtp.test.local'; // the transport is replaced with an in-memory one in the Phase 3 tests
+process.env.APP_URL = 'https://app.mangoinvoice.test';
 
 let mongo: MongoMemoryReplSet;
 let app: Express;
@@ -549,5 +554,138 @@ describe('Phase 2b: godowns, batches, price lists, barcode', () => {
     assert.equal(inv.body.items[0].price, 1250);
     const scan = await request(app).get('/api/products/by-barcode/8901234567890').set(h);
     assert.equal(scan.body._id, medId);
+  });
+});
+
+
+describe('Phase 3: Razorpay, email, reminders, e-invoice JSON', () => {
+  let h: Record<string, string> = {};
+  let bizId = '';
+  let customerId = '';
+  let productId = '';
+  const mails: { to: string; subject: string }[] = [];
+  const realFetch = globalThis.fetch;
+  const sign = async (body: string, secret: string) => (await import('node:crypto')).createHmac('sha256', secret).update(body).digest('hex');
+
+  before(async () => {
+    const { setMailTransport } = await import('../src/services/notify');
+    const nodemailer = (await import('nodemailer')).default;
+    const t = nodemailer.createTransport({ jsonTransport: true });
+    const orig = t.sendMail.bind(t);
+    (t as unknown as { sendMail: unknown }).sendMail = async (m: { to: string; subject: string }) => {
+      mails.push({ to: m.to, subject: m.subject });
+      return orig(m as never);
+    };
+    setMailTransport(t);
+    // Razorpay REST API stub (no network)
+    globalThis.fetch = (async (url: string | URL, init?: RequestInit) => {
+      const u = String(url);
+      if (u.includes('api.razorpay.com/v1/orders')) return new Response(JSON.stringify({ id: 'order_TEST1', amount: JSON.parse(String(init?.body)).amount, currency: 'INR' }), { status: 200 });
+      if (u.includes('api.razorpay.com/v1/payment_links')) return new Response(JSON.stringify({ id: 'plink_TEST1', short_url: 'https://rzp.io/i/test1' }), { status: 200 });
+      return realFetch(url, init);
+    }) as typeof fetch;
+  });
+  after(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  test('setup with PIN codes', async () => {
+    const s = await login('9810000050');
+    const b = await request(app)
+      .post('/api/businesses')
+      .set('Authorization', `Bearer ${s.accessToken}`)
+      .send({ name: 'Phase Three Traders', gstin: gstin('07', 'AAACT5555T'), stateCode: '07', address: 'Plot 4, Okhla Phase 2', city: 'New Delhi', pincode: '110020' });
+    bizId = b.body._id;
+    h = { Authorization: `Bearer ${s.accessToken}`, 'X-Business-Id': bizId };
+    customerId = (
+      await request(app).post('/api/parties').set(h).send({ type: 'CUSTOMER', name: 'Noida Buyer Pvt Ltd', gstin: BUYER_UP, stateCode: '09', phone: '9811122233', email: 'accounts@buyer.test', billingAddress: 'Sector 62, Noida', pincode: '201301' })
+    ).body._id;
+    productId = (await request(app).post('/api/products').set(h).send({ name: 'Inverter 1100VA', hsnCode: '8504', taxRate: 18, purchasePrice: 5000, sellingPrice: 6800, openingStock: 20 })).body._id;
+    assert.ok(customerId && productId);
+  });
+
+  test('subscription checkout: order, signature-verified activation, idempotent webhook', async () => {
+    const co = await request(app).post('/api/billing/checkout').set(h).send({ planId: 'gold', cycle: '1Y' });
+    assert.equal(co.status, 200, JSON.stringify(co.body));
+    assert.equal(co.body.orderId, 'order_TEST1');
+    assert.equal(co.body.amount, 471882); // ₹3,999 + 18% = ₹4,718.82 in paise
+    const bad = await request(app).post('/api/billing/checkout/verify').set(h).send({ orderId: 'order_TEST1', paymentId: 'pay_1', signature: 'nope' });
+    assert.equal(bad.status, 400);
+    const ok = await request(app).post('/api/billing/checkout/verify').set(h).send({ orderId: 'order_TEST1', paymentId: 'pay_1', signature: await sign('order_TEST1|pay_1', 'rzp_test_secret') });
+    assert.equal(ok.status, 200, JSON.stringify(ok.body));
+    assert.equal(ok.body.gateway, 'RAZORPAY');
+    // the webhook for the same payment must not create a second subscription
+    const body = JSON.stringify({ event: 'payment.captured', payload: { payment: { entity: { id: 'pay_1', order_id: 'order_TEST1', method: 'upi' } } } });
+    const wh = await request(app).post('/api/webhooks/razorpay').set('Content-Type', 'application/json').set('X-Razorpay-Signature', await sign(body, 'rzp_webhook_secret')).send(body);
+    assert.equal(wh.status, 200, JSON.stringify(wh.body));
+    const { Subscription } = await import('../src/models/platform');
+    assert.equal(await Subscription.countDocuments({ businessId: bizId }), 1);
+    const cur = (await request(app).get('/api/businesses/current').set(h)).body;
+    assert.equal(cur.business.planId, 'gold');
+  });
+
+  test('webhook with a bad signature is rejected', async () => {
+    const r = await request(app).post('/api/webhooks/razorpay').set('Content-Type', 'application/json').set('X-Razorpay-Signature', 'forged').send('{"event":"order.paid"}');
+    assert.equal(r.status, 401);
+  });
+
+  test('invoice payment link → paid webhook records the payment once', async () => {
+    const inv = (await request(app).post('/api/invoices').set(h).send({ partyId: customerId, items: [{ productId, quantity: 1 }] })).body;
+    const link = await request(app).post(`/api/invoices/${inv._id}/payment-link`).set(h);
+    assert.equal(link.status, 200, JSON.stringify(link.body));
+    assert.equal(link.body.url, 'https://rzp.io/i/test1');
+    const body = JSON.stringify({ event: 'payment_link.paid', payload: { payment_link: { entity: { id: 'plink_TEST1' } }, payment: { entity: { id: 'pay_link_1', method: 'upi' } } } });
+    for (let i = 0; i < 2; i++) {
+      const r = await request(app).post('/api/webhooks/razorpay').set('Content-Type', 'application/json').set('X-Razorpay-Signature', await sign(body, 'rzp_webhook_secret')).send(body);
+      assert.equal(r.status, 200);
+    }
+    const after = (await request(app).get(`/api/invoices/${inv._id}`).set(h)).body;
+    assert.equal(after.status, 'PAID');
+    const pays = (await request(app).get('/api/payments?type=PAYMENT_IN').set(h)).body.items.filter((p: { reference: string }) => p.reference === 'pay_link_1');
+    assert.equal(pays.length, 1);
+  });
+
+  test('e-invoice JSON in the IRP schema, then record the real IRN', async () => {
+    const inv = (await request(app).post('/api/invoices').set(h).send({ partyId: customerId, items: [{ productId, quantity: 2 }], charges: [{ label: 'Freight', amount: 300 }] })).body;
+    const j = await request(app).get(`/api/invoices/${inv._id}/einvoice/json`).set(h);
+    assert.equal(j.status, 200, JSON.stringify(j.body));
+    const p = j.body[0];
+    assert.equal(p.Version, '1.1');
+    assert.equal(p.TranDtls.SupTyp, 'B2B');
+    assert.equal(p.SellerDtls.Pin, 110020);
+    assert.equal(p.BuyerDtls.Pin, 201301);
+    assert.equal(p.BuyerDtls.Pos, '09');
+    assert.equal(p.ItemList.length, 2); // goods + freight
+    assert.equal(p.ItemList[1].HsnCd, '996511');
+    assert.equal(p.ValDtls.TotInvVal, inv.grandTotal);
+    const sumItems = p.ItemList.reduce((a: number, i: { TotItemVal: number }) => a + i.TotItemVal, 0);
+    assert.ok(Math.abs(sumItems + p.ValDtls.RndOffAmt - p.ValDtls.TotInvVal) < 0.02, 'items + round off = invoice value');
+    const ewb = await request(app).get(`/api/invoices/${inv._id}/ewaybill/json?distanceKm=35&vehicleNumber=DL01AB1234`).set(h);
+    assert.equal(ewb.status, 200, JSON.stringify(ewb.body));
+    assert.equal(ewb.body.billLists[0].toPincode, 201301);
+    const rec = await request(app).post(`/api/invoices/${inv._id}/einvoice/manual`).set(h).send({ irn: 'a'.repeat(64), ackNo: '112610000012345', ackDate: '2026-11-04 10:15:00' });
+    assert.equal(rec.status, 200, JSON.stringify(rec.body));
+    assert.equal(rec.body.eInvoice.mock, false);
+  });
+
+  test('invoice email, CA report and automatic reminders', async () => {
+    mails.length = 0;
+    const inv = (await request(app).get('/api/invoices').set(h)).body.items.find((i: { status: string }) => i.status !== 'PAID');
+    const e = await request(app).post(`/api/invoices/${inv._id}/email`).set(h).send({ to: 'accounts@buyer.test' });
+    assert.equal(e.status, 200, JSON.stringify(e.body));
+    const ca = await request(app).post('/api/reports/email-ca').set(h).send({ to: 'ca@firm.test', period: new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 7) });
+    assert.equal(ca.status, 200, JSON.stringify(ca.body));
+    // an invoice that fell due 3 days ago, with auto reminders on day 3 by email
+    const st = await request(app).patch('/api/businesses/current/settings').set(h).send({ autoReminders: { enabled: true, days: [3], channels: ['EMAIL'] } });
+    assert.equal(st.status, 200, JSON.stringify(st.body));
+    const d = (n: number) => new Date(Date.now() + 5.5 * 3600e3 + n * 86400e3).toISOString().slice(0, 10);
+    const due = await request(app).post('/api/invoices').set(h).send({ partyId: customerId, date: d(-10), dueDate: d(-3), items: [{ productId, quantity: 1 }] });
+    assert.equal(due.status, 201, JSON.stringify(due.body));
+    const { sendDueReminders } = await import('../src/services/workers');
+    const r1 = await sendDueReminders();
+    const r2 = await sendDueReminders();
+    assert.equal(r1.sent, 1);
+    assert.equal(r2.sent, 0, 'one reminder per day');
+    assert.deepEqual(mails.map(m => m.to), ['accounts@buyer.test', 'ca@firm.test', 'accounts@buyer.test']);
   });
 });

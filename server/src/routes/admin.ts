@@ -8,7 +8,7 @@ import { requirePlatformRole } from '../middleware/auth';
 import { config } from '../config';
 import type { Types } from 'mongoose';
 import { audit, compliance, effectivePlan, usage } from '../services/common';
-import { platformNumber, quote } from './support';
+import { activateSubscription } from '../services/subscriptions';
 import { todayIST } from '../lib/dates';
 import { fyLabel } from '../../../shared/gst';
 
@@ -219,45 +219,7 @@ adminRouter.post(
   SUPER,
   ah(async (req, res) => {
     const body = z.object({ planId: z.enum(['silver', 'gold', 'platinum']), cycle: z.enum(['1Y', '2Y', '3Y', 'LIFETIME']), couponCode: z.string().optional(), gatewayRef: z.string().max(80).optional() }).parse(req.body);
-    const b = await Business.findById(req.params.id);
-    if (!b) throw notFound('Business');
-    const q = await quote(body.planId, body.cycle, body.couponCode);
-    const start = todayIST();
-    const end = new Date(start + 'T00:00:00Z');
-    if (body.cycle === 'LIFETIME') end.setUTCFullYear(2099, 11, 31);
-    else end.setUTCFullYear(end.getUTCFullYear() + Number(body.cycle[0]));
-    const renewsOn = end.toISOString().slice(0, 10);
-    await Subscription.updateMany({ businessId: b._id, status: 'ACTIVE' }, { status: 'CANCELLED', autoRenew: false });
-    const sub = await Subscription.create({
-      // Rule 46 applies to our own invoices too: MS/26-27/00001 = 14 chars
-      invoiceNo: await platformNumber(`SUB_INVOICE:${fyLabel(start)}`, `MS/${fyLabel(start)}/`),
-      businessId: b._id,
-      businessName: b.name,
-      businessGstin: b.gstin,
-      planId: body.planId,
-      cycle: body.cycle,
-      baseAmount: q.baseAmount,
-      discount: q.discount,
-      gstAmount: q.gstAmount,
-      totalAmount: q.totalAmount,
-      couponCode: q.couponCode,
-      gateway: 'MANUAL',
-      gatewayRef: body.gatewayRef,
-      status: 'ACTIVE',
-      startDate: start,
-      renewsOn,
-      autoRenew: false,
-      createdBy: req.user!._id
-    });
-    if (q.couponCode) await Coupon.updateOne({ code: q.couponCode }, { $inc: { redeemed: 1 } });
-    b.planId = body.planId;
-    b.planCycle = body.cycle;
-    b.planValidUntil = renewsOn;
-    b.trialPlanId = null;
-    b.trialEndsOn = '';
-    if (b.status === 'PAST_DUE') b.status = 'ACTIVE';
-    await b.save();
-    await audit(req, 'PLAN_CHANGE', `${b.name} → ${q.planName} ${body.cycle} · ₹${q.totalAmount} (${sub.invoiceNo})`, 'SUCCESS', b._id);
+    const sub = await activateSubscription(req, req.params.id, { ...body, gateway: 'MANUAL' });
     res.status(201).json(sub);
   })
 );
@@ -426,6 +388,17 @@ async function segmentCount(segment: string) {
   }
 }
 
+/** Run background jobs now (delivery of queued broadcasts, reminders). */
+adminRouter.post(
+  '/jobs/:job(broadcasts|reminders|ca-reports)',
+  SUPER,
+  ah(async (req, res) => {
+    const w = await import('../services/workers');
+    const job = req.params.job;
+    res.json(job === 'broadcasts' ? await w.deliverBroadcasts() : job === 'reminders' ? await w.sendDueReminders() : await w.emailCaReports());
+  })
+);
+
 adminRouter.get(
   '/segments',
   ANY,
@@ -484,7 +457,7 @@ adminRouter.get(
         key: 'razorpay', name: 'Payment links & subscriptions', category: 'Payments', provider: 'Razorpay', environment: 'SANDBOX',
         status: has('RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET') ? 'CONNECTED' : 'NOT_CONFIGURED',
         envVars: ['RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET'],
-        note: 'Checkout and webhook-confirmed plan activation are not built yet. Plans can be activated manually.'
+        note: 'Self-serve plan checkout and invoice payment links. Set the webhook URL to /api/webhooks/razorpay (events: order.paid, payment.captured, payment_link.paid).'
       },
       {
         key: 'play_billing', name: 'Google Play Billing', category: 'Payments', provider: 'Google Play', environment: 'SANDBOX',
@@ -494,9 +467,15 @@ adminRouter.get(
       },
       {
         key: 'whatsapp', name: 'WhatsApp Business (Cloud API)', category: 'Messaging', provider: 'Not connected', environment: 'SANDBOX',
-        status: has('WHATSAPP_API_KEY') ? 'CONNECTED' : 'NOT_CONFIGURED',
-        envVars: ['WHATSAPP_PROVIDER', 'WHATSAPP_API_KEY', 'WHATSAPP_SENDER'],
-        note: 'Invoice and reminder templates need Meta approval. Broadcasts stay QUEUED until a sender is connected.'
+        status: has('WHATSAPP_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID') ? 'CONNECTED' : 'NOT_CONFIGURED',
+        envVars: ['WHATSAPP_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_REMINDER_TEMPLATE', 'WHATSAPP_BROADCAST_TEMPLATE'],
+        note: 'Meta WhatsApp Cloud API. Reminder and broadcast templates need Meta approval. Broadcasts stay QUEUED until a channel is connected.'
+      },
+      {
+        key: 'email', name: 'Email (SMTP)', category: 'Messaging', provider: process.env.SMTP_HOST || 'Not connected', environment: prodOrSandbox,
+        status: has('SMTP_HOST') ? 'CONNECTED' : 'NOT_CONFIGURED',
+        envVars: ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM'],
+        note: 'Invoices by email, reminders and the monthly CA summary. Amazon SES, Zoho or any SMTP service works.'
       },
       {
         key: 'database', name: 'Database', category: 'Storage & Backup',

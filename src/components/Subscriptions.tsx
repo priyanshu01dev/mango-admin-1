@@ -31,14 +31,14 @@ table{width:100%;border-collapse:collapse;margin-top:16px}td,th{border:1px solid
 th{background:#fff7ed}.r{text-align:right}.muted{color:#78716c}.top{display:flex;justify-content:space-between;border-bottom:3px solid #f7781b;padding-bottom:12px}</style>
 </head><body>
 <div class="top"><div><h1>TAX INVOICE</h1><div class="muted">Original for recipient</div></div>
-<div class="r"><b>Mango Invoice</b> · Powered by First Wave<br/>GSTIN: 22ABCFW1234M1Z5<br/>Raipur, Chhattisgarh (22)</div></div>
+<div class="r"><b>${s.sellerName || 'Mango Invoice'}</b> · Mango Invoice<br/>GSTIN: ${s.sellerGstin || '<span style="color:#be123c">GSTIN not set (PLATFORM_GSTIN)</span>'}<br/>State code: ${s.sellerStateCode || '—'}</div></div>
 <p><b>Invoice No:</b> ${s.invoiceNo} &nbsp; <b>Date:</b> ${s.startDate} &nbsp; <b>Place of supply:</b> ${s.merchantGstin ? s.merchantGstin.slice(0, 2) : '22'}</p>
 <p><b>Bill to:</b> ${s.merchantName}<br/>GSTIN: ${s.merchantGstin || 'Unregistered'}</p>
 <table><tr><th>Description</th><th>SAC</th><th class="r">Amount (₹)</th></tr>
 <tr><td>${planName} plan subscription (${s.cycle}) · ${s.startDate} to ${s.renewsOn}</td><td>998314</td><td class="r">${s.baseAmount.toFixed(2)}</td></tr>
 ${s.discount ? `<tr><td>Discount ${s.couponCode ?? ''}</td><td></td><td class="r">-${s.discount.toFixed(2)}</td></tr>` : ''}
 <tr><td colspan="2" class="r">Taxable value</td><td class="r">${taxable.toFixed(2)}</td></tr>
-${(s.merchantGstin || '22').startsWith('22')
+${(s.merchantGstin || s.sellerStateCode || '').slice(0, 2) === (s.sellerStateCode || '')
   ? `<tr><td colspan="2" class="r">CGST 9%</td><td class="r">${half}</td></tr><tr><td colspan="2" class="r">SGST 9%</td><td class="r">${half}</td></tr>`
   : `<tr><td colspan="2" class="r">IGST ${GST_ON_SUBSCRIPTION}%</td><td class="r">${s.gstAmount.toFixed(2)}</td></tr>`}
 <tr><th colspan="2" class="r">Total</th><th class="r">₹${s.totalAmount.toFixed(2)}</th></tr></table>

@@ -32,7 +32,9 @@ const profileSchema = z.object({
   bank: z.object({ name: z.string(), accountNumber: z.string(), ifsc: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/).or(z.literal('')), branch: z.string() }).partial().optional(),
   upiId: z.string().regex(/^[\w.-]{2,}@[a-zA-Z]{2,}$/).or(z.literal('')).optional(),
   signatureText: z.string().max(120).optional(),
-  lutNumber: z.string().max(30).optional()
+  lutNumber: z.string().max(30).optional(),
+  caEmail: z.string().email().or(z.literal('')).optional(),
+  autoEmailCa: z.boolean().optional()
 });
 
 function checkTaxIds(b: { gstin?: string; pan?: string; stateCode: string; gstType?: string }) {
@@ -121,6 +123,7 @@ const settingsSchema = z
     defaultNotes: z.string().max(500),
     terms: z.string().max(2000),
     allowNegativeStock: z.boolean(),
+    autoReminders: z.object({ enabled: z.boolean(), days: z.array(z.number().int().min(0).max(120)).max(6), channels: z.array(z.enum(['WHATSAPP', 'SMS', 'EMAIL'])).min(1) }),
     docPrefixes: z.record(z.string(), z.string().max(14))
   })
   .partial();

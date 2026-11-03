@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useBilling } from '../context/BillingContext';
+import { PortalJsonDesk } from './PortalJsonDesk';
 import { EWayBillRecord, EInvoiceRecord } from '../types';
 import { formatINR, formatDate, TRANSLATIONS } from '../utils/formatters';
 import { Truck, QrCode, FileText, CheckCircle2, AlertCircle, Printer, X, ShieldCheck } from 'lucide-react';
@@ -8,7 +9,7 @@ export const EWayBillEInvoice: React.FC = () => {
   const { language, activeBusiness, ewayBills, eInvoices, invoices } = useBilling();
   const t = TRANSLATIONS[language];
 
-  const [activeSubTab, setActiveSubTab] = useState<'EWAY' | 'EINVOICE'>('EWAY');
+  const [activeSubTab, setActiveSubTab] = useState<'EWAY' | 'EINVOICE' | 'PORTAL'>('EWAY');
   const [selectedEwbForPrint, setSelectedEwbForPrint] = useState<EWayBillRecord | null>(null);
 
   return (
@@ -53,10 +54,20 @@ export const EWayBillEInvoice: React.FC = () => {
             <QrCode className="w-3.5 h-3.5" />
             <span>e-Invoices (IRN) ({eInvoices.length})</span>
           </button>
+          <button
+            onClick={() => setActiveSubTab('PORTAL')}
+            className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              activeSubTab === 'PORTAL' ? 'bg-mango-500 text-white shadow-sm' : 'text-stone-500 hover:text-ink'
+            }`}
+          >
+            <span>Portal JSON (no GSP)</span>
+          </button>
         </div>
       </div>
 
       {/* SubTab 1: E-Way Bills Table */}
+      {activeSubTab === 'PORTAL' && <PortalJsonDesk />}
+
       {activeSubTab === 'EWAY' && (
         <div className="bg-white border border-mango-100 rounded-2xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">

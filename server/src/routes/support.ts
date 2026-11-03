@@ -100,11 +100,4 @@ supportRouter.post(
   })
 );
 
-supportRouter.post(
-  '/billing/checkout',
-  allow(...MANAGE),
-  ah(async () => {
-    // Razorpay order creation + webhook-confirmed activation goes here once keys are configured.
-    throw new HttpError(503, 'Online payment is not configured yet. Contact support to activate a plan.', 'PAYMENTS_NOT_CONFIGURED');
-  })
-);
+

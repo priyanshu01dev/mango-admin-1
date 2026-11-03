@@ -3,6 +3,7 @@ import { useBilling } from '../context/BillingContext';
 import { InvoiceSettingsPanel } from './InvoiceSettingsPanel';
 import { TeamPanel } from './TeamPanel';
 import { DataControls } from './DataControls';
+import { PlanBilling, AutomationSettings } from './PlanBilling';
 import { BusinessProfile } from '../types';
 import { formatINR, TRANSLATIONS, INDIAN_STATES } from '../utils/formatters';
 import { Settings, ShieldCheck, Users, FileText, CheckCircle2, AlertTriangle, Building, Save } from 'lucide-react';
@@ -11,7 +12,7 @@ export const AuditSettings: React.FC = () => {
   const { language, activeBusiness, updateBusinessProfile, auditLogs, showToast } = useBilling();
   const t = TRANSLATIONS[language];
 
-  const [activeSubTab, setActiveSubTab] = useState<'BIZ_SETTINGS' | 'INVOICE_SETTINGS' | 'USERS_RBAC' | 'AUDIT_LOGS'>('BIZ_SETTINGS');
+  const [activeSubTab, setActiveSubTab] = useState<'BIZ_SETTINGS' | 'INVOICE_SETTINGS' | 'PLAN' | 'AUTOMATION' | 'USERS_RBAC' | 'AUDIT_LOGS'>('BIZ_SETTINGS');
 
   // Business form state
   const [formData, setFormData] = useState<BusinessProfile>({ ...activeBusiness });
@@ -53,6 +54,22 @@ export const AuditSettings: React.FC = () => {
             }`}
           >
             Invoice Settings
+          </button>
+          <button
+            onClick={() => setActiveSubTab('PLAN')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              activeSubTab === 'PLAN' ? 'bg-mango-500 text-white shadow-sm' : 'text-stone-500 hover:text-ink'
+            }`}
+          >
+            Plan & Billing
+          </button>
+          <button
+            onClick={() => setActiveSubTab('AUTOMATION')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              activeSubTab === 'AUTOMATION' ? 'bg-mango-500 text-white shadow-sm' : 'text-stone-500 hover:text-ink'
+            }`}
+          >
+            Reminders & CA
           </button>
           <button
             onClick={() => setActiveSubTab('USERS_RBAC')}
@@ -234,6 +251,8 @@ export const AuditSettings: React.FC = () => {
       {activeSubTab === 'BIZ_SETTINGS' && <DataControls />}
 
       {activeSubTab === 'INVOICE_SETTINGS' && <InvoiceSettingsPanel />}
+      {activeSubTab === 'PLAN' && <PlanBilling />}
+      {activeSubTab === 'AUTOMATION' && <AutomationSettings />}
 
       {activeSubTab === 'USERS_RBAC' && <TeamPanel />}
 

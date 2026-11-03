@@ -36,6 +36,9 @@ const subscriptionSchema = new Schema(
     businessId: { type: ObjectId, ref: 'Business', required: true, index: true },
     businessName: String,
     businessGstin: String,
+    sellerName: String, // the platform company issuing the invoice
+    sellerGstin: String,
+    sellerStateCode: String,
     planId: { type: String, enum: PLAN_IDS, required: true },
     cycle: { type: String, enum: ['1Y', '2Y', '3Y', 'LIFETIME'], required: true },
     baseAmount: Number,
@@ -44,7 +47,7 @@ const subscriptionSchema = new Schema(
     totalAmount: Number,
     couponCode: String,
     gateway: { type: String, enum: ['RAZORPAY', 'PLAY_BILLING', 'MANUAL'], default: 'MANUAL' },
-    gatewayRef: String,
+    gatewayRef: { type: String, index: { unique: true, sparse: true } }, // one subscription per gateway payment
     status: { type: String, enum: ['ACTIVE', 'PAST_DUE', 'CANCELLED', 'EXPIRED'], default: 'ACTIVE' },
     startDate: String,
     renewsOn: String,
@@ -124,6 +127,7 @@ const broadcastSchema = new Schema(
     recipients: { type: Number, default: 0 },
     delivered: { type: Number, default: 0 },
     opened: { type: Number, default: 0 },
+    lastError: { type: String, default: '' },
     createdBy: { type: ObjectId, ref: 'User' }
   },
   opts

@@ -16,6 +16,7 @@ const partySchema = new Schema(
     email: { type: String, default: '' },
     gstin: { type: String, default: '', uppercase: true },
     pan: { type: String, default: '', uppercase: true },
+    pincode: { type: String, default: '' },
     billingAddress: { type: String, default: '' },
     shippingAddress: { type: String, default: '' },
     state: { type: String, default: '' },
@@ -114,6 +115,7 @@ const partySnapshot = {
   partyGstin: { type: String, default: '' },
   partyPhone: { type: String, default: '' },
   partyAddress: { type: String, default: '' },
+  partyPincode: { type: String, default: '' },
   partyStateCode: { type: String, required: true }
 };
 
@@ -146,6 +148,7 @@ const invoiceSchema = new Schema(
       lutNumber: { type: String, default: '' }
     },
     publicToken: { type: String, index: { unique: true, sparse: true } },
+    remindersSent: [{ _id: false, channel: String, at: Date }],
     date: { type: String, required: true },
     dueDate: String,
     ...partySnapshot,

@@ -28,6 +28,7 @@ const partySchema = z.object({
   email: z.string().email().or(z.literal('')).optional(),
   gstin: z.string().max(15).optional(),
   pan: z.string().max(10).optional(),
+  pincode: z.string().regex(/^[1-9]\d{5}$/, 'PIN code is 6 digits').or(z.literal('')).optional(),
   billingAddress: z.string().max(300).optional(),
   shippingAddress: z.string().max(300).optional(),
   stateCode: z.string().regex(/^\d{2}$/),

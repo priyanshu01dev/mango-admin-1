@@ -64,6 +64,11 @@ const invoiceSettingsSchema = new Schema(
     defaultNotes: { type: String, default: '' },
     terms: { type: String, default: '' },
     allowNegativeStock: { type: Boolean, default: false },
+    autoReminders: {
+      enabled: { type: Boolean, default: false },
+      days: { type: [Number], default: [1, 7, 15] }, // days after due date
+      channels: { type: [String], enum: ['WHATSAPP', 'SMS', 'EMAIL'], default: ['WHATSAPP', 'EMAIL'] }
+    },
     docPrefixes: {
       PROFORMA: { type: String, default: 'PF/{FY}/' },
       SALES_ORDER: { type: String, default: 'SO/{FY}/' },
@@ -118,6 +123,8 @@ const businessSchema = new Schema(
     lastActiveAt: Date,
     openingBalances: { cash: { type: Number, default: 0 }, bank: { type: Number, default: 0 }, capital: { type: Number, default: 0 }, asOn: { type: String, default: '' } },
     lutNumber: { type: String, default: '' }, // Letter of Undertaking for zero-rated supplies
+    caEmail: { type: String, default: '' },
+    autoEmailCa: { type: Boolean, default: false }, // monthly GST summary to the CA
     deletionRequestedAt: Date,
     deletionRequestedBy: { type: ObjectId, ref: 'User' }
   },

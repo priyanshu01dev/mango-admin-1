@@ -22,7 +22,9 @@ import {
   Building2,
   AlertCircle,
   Copy,
-  Link2
+  Link2,
+  IndianRupee,
+  Mail
 } from 'lucide-react';
 import { get, post, errMsg } from '../api/client';
 
@@ -543,6 +545,43 @@ export const Invoices: React.FC<InvoicesProps> = ({
                       title={t.shareWhatsapp}
                     >
                       <Share2 className="w-3.5 h-3.5" />
+                    </button>
+
+                    {/* Razorpay payment link / reminder (spec §8.8) */}
+                    {inv.balanceDue > 0 && inv.status !== 'CANCELLED' && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const r = await post<{ url: string }>(`/api/invoices/${inv.id}/payment-link`);
+                            await navigator.clipboard?.writeText(r.url).catch(() => undefined);
+                            const text = `Pay ${formatINR(inv.balanceDue)} for invoice ${inv.invoiceNumber} (${activeBusiness.tradeName || activeBusiness.name}): ${r.url}`;
+                            window.open(`https://wa.me/${inv.customerPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
+                            showToast('Payment link copied');
+                          } catch (e) {
+                            showToast(errMsg(e));
+                          }
+                        }}
+                        className="p-1.5 rounded-lg bg-leaf-50 hover:bg-leaf-100 text-leaf-700 transition-colors"
+                        title="Razorpay payment link (UPI / card)"
+                      >
+                        <IndianRupee className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <button
+                      onClick={async () => {
+                        const to = window.prompt('Email invoice to:', parties.find(p => p.id === inv.customerId)?.email ?? '');
+                        if (!to) return;
+                        try {
+                          await post(`/api/invoices/${inv.id}/email`, { to });
+                          showToast(`Invoice emailed to ${to}`);
+                        } catch (e) {
+                          showToast(errMsg(e));
+                        }
+                      }}
+                      className="p-1.5 rounded-lg bg-mango-50/60 hover:bg-mango-100 text-stone-500 hover:text-ink transition-colors"
+                      title="Email invoice"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
                     </button>
 
                     {/* Public link for the customer (spec §8.7 P1) */}

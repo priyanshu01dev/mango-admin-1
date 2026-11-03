@@ -70,6 +70,9 @@ export interface SubscriptionRecord {
   merchantId: string;
   merchantName: string;
   merchantGstin: string;
+  sellerName?: string;
+  sellerGstin?: string;
+  sellerStateCode?: string;
   planId: PlanId;
   cycle: BillingCycle;
   baseAmount: number;

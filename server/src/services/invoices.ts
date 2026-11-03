@@ -46,14 +46,14 @@ export async function createInvoice(req: Request, input: CreateInvoiceInput, out
   const run = async (session: ClientSession) => {
     // ---- buyer ----
     let priceListId: unknown = null;
-    let buyer: { partyId?: unknown; name: string; gstin: string; phone: string; address: string; stateCode: string };
+    let buyer: { partyId?: unknown; name: string; gstin: string; phone: string; address: string; stateCode: string; pincode?: string };
     if (input.partyId) {
       const party = await Party.findOne({ _id: input.partyId, businessId: business._id }).session(session).lean();
       if (!party) throw notFound('Customer');
       if (party.type !== 'CUSTOMER') throw badRequest('Invoices can only be raised to customers');
       if (party.status === 'BLOCKED') throw badRequest(`${party.name} is blocked`);
       priceListId = party.priceListId;
-      buyer = { partyId: party._id, name: party.name, gstin: party.gstin ?? '', phone: party.phone ?? '', address: party.billingAddress ?? '', stateCode: party.stateCode };
+      buyer = { partyId: party._id, name: party.name, gstin: party.gstin ?? '', phone: party.phone ?? '', address: party.billingAddress ?? '', stateCode: party.stateCode, pincode: party.pincode ?? '' };
     } else if (input.walkIn) {
       buyer = { name: input.walkIn.name, gstin: (input.walkIn.gstin ?? '').toUpperCase(), phone: input.walkIn.phone ?? '', address: input.walkIn.address ?? '', stateCode: input.walkIn.stateCode };
     } else {
@@ -147,6 +147,7 @@ export async function createInvoice(req: Request, input: CreateInvoiceInput, out
           partyGstin: buyer.gstin,
           partyPhone: buyer.phone,
           partyAddress: buyer.address,
+          partyPincode: buyer.pincode ?? '',
           partyStateCode: buyer.stateCode,
           placeOfSupply: buyer.stateCode,
           godownId: input.godownId || undefined,

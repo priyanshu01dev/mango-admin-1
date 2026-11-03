@@ -14,6 +14,7 @@ import { supportRouter } from './routes/support';
 import { adminRouter } from './routes/admin';
 import { phase2Router } from './routes/phase2';
 import { inventoryRouter } from './routes/inventory';
+import { integrationsRouter, webhookRouter } from './routes/integrations';
 import { publicRouter } from './routes/public';
 
 export function createApp() {
@@ -23,7 +24,8 @@ export function createApp() {
   app.use(helmet());
   const origins = config.CORS_ORIGINS.split(',').map(s => s.trim()).filter(Boolean);
   app.use(cors({ origin: (origin, cb) => cb(null, !origin || origins.includes(origin)), allowedHeaders: ['Authorization', 'Content-Type', 'X-Business-Id', 'X-Platform'] }));
-  app.use(express.json({ limit: '1mb' }));
+  // keep the raw body: webhook signatures are computed over the exact bytes received
+  app.use(express.json({ limit: '2mb', verify: (req, _res, buf) => ((req as express.Request & { rawBody?: Buffer }).rawBody = buf) }));
 
   app.get('/api/health', (_req, res) => {
     const db = mongoose.connection.readyState === 1;
@@ -32,6 +34,7 @@ export function createApp() {
 
   app.use('/api/auth', authRouter);
   app.use('/api/public', publicRouter); // no login: customer-facing invoice links
+  app.use('/api/webhooks', webhookRouter); // no login: verified by signature
   app.use('/api/businesses', requireAuth, businessRouter);
   app.use('/api/admin', requireAuth, adminRouter);
   // business-scoped API: needs a login and an X-Business-Id the user is a member of (checked once)
@@ -42,6 +45,7 @@ export function createApp() {
   scoped.use(txRouter);
   scoped.use(phase2Router);
   scoped.use(inventoryRouter);
+  scoped.use(integrationsRouter);
   scoped.use('/reports', reportsRouter);
   app.use('/api', scoped);
 
