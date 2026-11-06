@@ -51,13 +51,13 @@ export const Inventory: React.FC = () => {
       p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.hsnCode.includes(searchTerm);
     const matchesCategory = filterCategory === 'ALL' || p.category === filterCategory;
-    const matchesLowStock = !onlyLowStock || p.currentStock <= p.minStockAlert;
+    const matchesLowStock = !onlyLowStock || (!p.isService && p.currentStock < p.minStockAlert);
     return matchesBiz && matchesSearch && matchesCategory && matchesLowStock;
   });
 
   const totalStockCount = filteredProducts.reduce((acc, p) => acc + p.currentStock, 0);
   const totalStockValue = filteredProducts.reduce((acc, p) => acc + p.currentStock * p.purchasePrice, 0);
-  const lowStockCount = products.filter(p => p.businessId === activeBusiness.id && p.currentStock <= p.minStockAlert).length;
+  const lowStockCount = products.filter(p => p.businessId === activeBusiness.id && (!p.isService && p.currentStock < p.minStockAlert)).length;
 
   const handleSaveProduct = (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,13 +159,7 @@ export const Inventory: React.FC = () => {
           </select>
         </div>
 
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center space-x-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs shadow-md shadow-emerald-500/20"
-        >
-          <PlusCircle className="w-4 h-4" />
-          <span>{t.addProduct}</span>
-        </button>
+        {null}
       </div>
 
       {/* Products Table */}
@@ -189,7 +183,7 @@ export const Inventory: React.FC = () => {
               {filteredProducts.map(prod => {
                 const margin = prod.sellingPrice - prod.purchasePrice;
                 const marginPct = prod.purchasePrice > 0 ? ((margin / prod.purchasePrice) * 100).toFixed(0) : 0;
-                const isLow = prod.currentStock <= prod.minStockAlert;
+                const isLow = (!prod.isService && prod.currentStock < prod.minStockAlert);
 
                 return (
                   <tr key={prod.id} className="hover:bg-slate-800/40 transition-colors">
@@ -229,16 +223,7 @@ export const Inventory: React.FC = () => {
                     </td>
 
                     <td className="p-3.5 pr-5 text-right">
-                      <button
-                        onClick={() => {
-                          setAdjustingProduct(prod);
-                          setAdjustQty(10);
-                        }}
-                        className="flex items-center space-x-1 ml-auto px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-[11px] font-semibold transition-colors"
-                      >
-                        <ArrowDownUp className="w-3 h-3 text-emerald-400" />
-                        <span>Adjust</span>
-                      </button>
+                      <span className="text-[10px] text-slate-500">{prod.isService ? "Service" : "Synced"}</span>
                     </td>
                   </tr>
                 );

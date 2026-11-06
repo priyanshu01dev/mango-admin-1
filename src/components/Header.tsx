@@ -26,34 +26,39 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice }) => {
     invoices,
     products,
     quickNotification,
-    resetAllToDefault
+    resetAllToDefault,
+    admin,
+    logout,
+    loading,
+    hasBusinessAccess
   } = useBilling();
+  const [bizSearch, setBizSearch] = useState('');
 
   const [showBizDropdown, setShowBizDropdown] = useState(false);
   const [showNotifyPanel, setShowNotifyPanel] = useState(false);
 
   const t = TRANSLATIONS[language];
 
-  const lowStockCount = products.filter(p => p.currentStock <= p.minStockAlert).length;
+  const lowStockCount = products.filter(p => (!p.isService && p.currentStock < p.minStockAlert)).length;
   const overdueCount = invoices.filter(i => i.status === 'OVERDUE' || (i.status === 'UNPAID' && i.balanceDue > 0)).length;
   const totalNotifications = lowStockCount + overdueCount;
 
   return (
     <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 lg:px-8 py-3.5 flex items-center justify-between no-print shadow-sm">
-      {/* Left: Active Business Switcher */}
-      <div className="flex items-center space-x-3">
+      {/* Left: Active Business Switcher (only for admins with a business screen) */}
+      <div className={`flex items-center space-x-3 ${hasBusinessAccess ? '' : 'invisible'}`}>
         <div className="relative">
           <button
             onClick={() => setShowBizDropdown(!showBizDropdown)}
             className="flex items-center space-x-2.5 bg-slate-800/80 hover:bg-slate-800 px-3.5 py-2 rounded-xl border border-slate-700/60 text-left transition-all"
           >
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 font-black text-sm shadow-md">
-              {activeBusiness.name.slice(0, 1)}
+              {(activeBusiness.name || '?').slice(0, 1)}
             </div>
             <div className="hidden sm:block">
               <div className="flex items-center space-x-1.5">
                 <span className="text-xs font-bold text-white max-w-[190px] truncate">
-                  {activeBusiness.tradeName || activeBusiness.name}
+                  {activeBusiness.tradeName || activeBusiness.name || (language === 'hi' ? 'बिजनेस चुनें' : 'Select business')}
                 </span>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </div>
@@ -68,7 +73,17 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice }) => {
               <div className="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-700/50">
                 {language === 'hi' ? 'दुकान / बिजनेस बदलें' : 'Switch Store / Business'}
               </div>
-              {businesses.map(b => (
+              <div className="p-2 border-b border-slate-700/50">
+                <input
+                  autoFocus
+                  value={bizSearch}
+                  onChange={e => setBizSearch(e.target.value)}
+                  placeholder={language === 'hi' ? 'नाम, GSTIN या शहर खोजें…' : 'Search name, GSTIN or city…'}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder:text-slate-500"
+                />
+              </div>
+              <div className="max-h-80 overflow-y-auto">
+              {businesses.filter(b => !bizSearch || `${b.name} ${b.gstin} ${b.city} ${b.state} ${b.ownerPhone ?? ''}`.toLowerCase().includes(bizSearch.toLowerCase())).map(b => (
                 <button
                   key={b.id}
                   onClick={() => {
@@ -84,10 +99,12 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice }) => {
                   <Building2 className="w-4 h-4 shrink-0 text-slate-400" />
                   <div className="truncate">
                     <div className="font-semibold">{b.name}</div>
-                    <div className="text-[10px] text-slate-400 font-mono">{b.state} ({b.stateCode}) • {b.gstin}</div>
+                    <div className="text-[10px] text-slate-400 font-mono">{b.city || b.state || '—'} • {b.gstin} • {b.activePlan}</div>
                   </div>
                 </button>
               ))}
+              </div>
+              <div className="px-3 py-2 text-[10px] text-slate-500 border-t border-slate-700/50">{businesses.length} {language === 'hi' ? 'बिजनेस ऐप पर' : 'businesses on the app'}</div>
             </div>
           )}
         </div>
@@ -166,37 +183,30 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewInvoice }) => {
 
         {/* Reset Demo Data Button */}
         <button
-          onClick={() => {
-            if (confirm(language === 'hi' ? 'क्या आप डेमो डेटा रीसेट करना चाहते हैं?' : 'Reset all data back to clean demo state?')) {
-              resetAllToDefault();
-            }
-          }}
+          onClick={() => resetAllToDefault()}
           className="hidden sm:flex items-center space-x-1 p-2 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-slate-200 border border-slate-700/70 transition-colors text-xs"
-          title="Reset Demo Data"
+          title={language === 'hi' ? 'ताज़ा डेटा लाएं' : 'Refresh data from server'}
         >
-          <RotateCcw className="w-3.5 h-3.5" />
+          <RotateCcw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
         </button>
 
         {/* Quick Action: New GST Invoice CTA */}
-        <button
-          onClick={onOpenNewInvoice}
-          className="flex items-center space-x-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs shadow-lg shadow-emerald-500/20 transition-all transform active:scale-95"
-        >
-          <PlusCircle className="w-4 h-4" />
-          <span>{t.createNewInvoice}</span>
-        </button>
+        {null}
 
         {/* Super Admin User Profile indicator */}
-        <div className="hidden xl:flex items-center space-x-2 pl-2 border-l border-slate-800">
+        <div className="flex items-center space-x-2 pl-2 border-l border-slate-800">
           <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-xs text-white">
-            PK
+            {(admin?.name ?? '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}
           </div>
           <div className="text-left text-xs leading-none">
-            <span className="font-bold text-slate-200">Priyanshu</span>
+            <span className="font-bold text-slate-200">{admin?.name}</span>
             <span className="block text-[10px] text-emerald-400 mt-1 flex items-center">
-              <ShieldCheck className="w-2.5 h-2.5 mr-0.5 inline" /> Super Admin
+              <ShieldCheck className="w-2.5 h-2.5 mr-0.5 inline" /> {admin?.isSuperAdmin ? 'super admin' : 'admin'}
             </span>
           </div>
+          <button onClick={logout} className="ml-1 text-[10px] text-slate-400 hover:text-rose-400 underline">
+            {language === 'hi' ? 'लॉग आउट' : 'Sign out'}
+          </button>
         </div>
       </div>
     </header>

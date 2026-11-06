@@ -13,8 +13,9 @@ import {
   CreditCard,
   Terminal,
   Settings,
-  HelpCircle,
-  ShieldCheck
+  ShieldCheck,
+  CalendarCheck,
+  UserCog
 } from 'lucide-react';
 
 export type NavTab =
@@ -27,8 +28,17 @@ export type NavTab =
   | 'payments'
   | 'gst'
   | 'subscriptions'
+  | 'attendance'
   | 'api'
-  | 'audit';
+  | 'audit'
+  | 'staff';
+
+/** Every sidebar tab is an admin screen key (permissions use the same keys). */
+/** The Audit & Settings tab opens with either 'audit' (audit log) or 'businesses' (suspend / snapshot). */
+export const tabAllowed = (tab: NavTab, can: (s: NavTab | 'businesses') => boolean) =>
+  tab === 'audit' ? can('audit') || can('businesses') : can(tab);
+
+export const NAV_ORDER: NavTab[] = ['dashboard', 'invoices', 'quotations', 'eway', 'inventory', 'parties', 'payments', 'gst', 'subscriptions', 'attendance', 'api', 'audit', 'staff'];
 
 interface SidebarProps {
   activeTab: NavTab;
@@ -36,10 +46,10 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
-  const { language, invoices, products, activeBusiness } = useBilling();
+  const { language, invoices, products, activeBusiness, can, hasBusinessAccess } = useBilling();
   const t = TRANSLATIONS[language];
 
-  const lowStockCount = products.filter(p => p.currentStock <= p.minStockAlert).length;
+  const lowStockCount = products.filter(p => (!p.isService && p.currentStock < p.minStockAlert)).length;
   const unpaidCount = invoices.filter(i => i.status === 'UNPAID' || i.status === 'PARTIALLY_PAID').length;
 
   const navItems: { id: NavTab; label: string; icon: React.FC<{ className?: string }>; badge?: string | number; badgeColor?: string }[] = [
@@ -94,6 +104,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
       icon: CreditCard
     },
     {
+      id: 'attendance',
+      label: t.staffAttendance,
+      icon: CalendarCheck
+    },
+    {
       id: 'api',
       label: t.androidApi,
       icon: Terminal,
@@ -104,16 +119,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
       id: 'audit',
       label: t.auditLogs,
       icon: Settings
+    },
+    {
+      id: 'staff',
+      label: t.adminStaff,
+      icon: UserCog
     }
   ];
+  const visibleItems = navItems.filter(item => tabAllowed(item.id, can));
 
   return (
     <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 no-print">
       {/* Brand Logo & Name */}
       <div className="p-4 border-b border-slate-800 flex items-center space-x-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 font-black text-xl shadow-lg shadow-emerald-500/20">
-          G
-        </div>
+        <img src="/mango-mark.png" alt="" className="w-10 h-10 rounded-xl" />
         <div>
           <div className="flex items-center space-x-1.5">
             <span className="font-extrabold text-base tracking-tight text-white">{t.appName}</span>
@@ -133,7 +152,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
           {language === 'hi' ? 'मुख्य मेनू (Core Modules)' : 'Core Modules'}
         </div>
 
-        {navItems.map(item => {
+        {visibleItems.length === 0 && (
+          <p className="px-3 py-2 text-[11px] text-slate-500">{language === 'hi' ? 'अभी कोई स्क्रीन नहीं मिली' : 'No screens assigned yet'}</p>
+        )}
+        {visibleItems.map(item => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
           return (
@@ -172,27 +194,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
       </nav>
 
       {/* Plan & Footer Box */}
-      <div className="p-3 border-t border-slate-800">
+      {hasBusinessAccess && activeBusiness.id && <div className="p-3 border-t border-slate-800">
         <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3 text-xs">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-slate-300">
-              {activeBusiness.activePlan} Plan
+              {activeBusiness.planName ?? activeBusiness.activePlan} Plan
             </span>
             <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">
-              Active
+              {activeBusiness.planStatus === 'trial' ? 'Trial' : activeBusiness.status === 'SUSPENDED' ? 'Suspended' : 'Active'}
             </span>
           </div>
           <p className="text-[10px] text-slate-400 mt-1">
-            {language === 'hi' ? 'वैधता: ' : 'Valid: '}{activeBusiness.planValidUntil}
+            {language === 'hi' ? 'वैधता: ' : 'Valid: '}{activeBusiness.planValidUntil ? new Date(activeBusiness.planValidUntil).toLocaleDateString('en-IN') : (language === 'hi' ? 'हमेशा' : 'No end date')}
           </p>
           <div className="mt-2.5 pt-2 border-t border-slate-700/40 flex items-center justify-between text-[10px] text-slate-400">
             <span className="flex items-center">
-              <ShieldCheck className="w-3 h-3 text-emerald-400 mr-1" /> GST Verified
+              <ShieldCheck className="w-3 h-3 text-emerald-400 mr-1" /> {language === 'hi' ? 'सिंक' : 'Synced'}
             </span>
-            <span className="font-mono">v3.4.2</span>
+            <span className="font-mono">{activeBusiness.lastSyncAt ? new Date(activeBusiness.lastSyncAt).toLocaleDateString('en-IN') : '—'}</span>
           </div>
         </div>
-      </div>
+      </div>}
     </aside>
   );
 };

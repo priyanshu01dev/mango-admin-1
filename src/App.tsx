@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { BillingProvider, useBilling } from './context/BillingContext';
-import { Sidebar, NavTab } from './components/Sidebar';
+import React, { useEffect, useState } from 'react';
+import { BillingProvider, BUSINESS_SCREENS, useBilling } from './context/BillingContext';
+import { Sidebar, NavTab, NAV_ORDER, tabAllowed } from './components/Sidebar';
 import { Header } from './components/Header';
 import { Dashboard } from './components/Dashboard';
 import { Invoices } from './components/Invoices';
@@ -14,16 +14,43 @@ import { Subscriptions } from './components/Subscriptions';
 import { AndroidApiExplorer } from './components/AndroidApiExplorer';
 import { AuditSettings } from './components/AuditSettings';
 import { InvoicePrintModal } from './components/InvoicePrintModal';
+import { Login } from './components/Login';
+import { Staff } from './components/Staff';
+import { BusinessStaff } from './components/BusinessStaff';
+import { NoAccess } from './components/NoAccess';
+import { Loader2, AlertTriangle, CloudOff } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
   const [isCreateInvoiceModalOpen, setIsCreateInvoiceModalOpen] = useState(false);
-  const { selectedInvoiceForPrint, setSelectedInvoiceForPrint } = useBilling();
+  const { selectedInvoiceForPrint, setSelectedInvoiceForPrint, admin, authReady, activeBusiness, businesses, error, reload, hasSnapshot, loading, language, can } = useBilling();
+  const hi = language === 'hi';
+  const firstAllowed = NAV_ORDER.find((t) => tabAllowed(t, can));
+
+  // After sign-in (or a permission change) land on the first screen this admin may open.
+  useEffect(() => {
+    if (admin && !tabAllowed(activeTab, can) && firstAllowed) setActiveTab(firstAllowed);
+  }, [admin]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!authReady) return <div className="h-screen bg-slate-950 flex items-center justify-center"><Loader2 className="w-6 h-6 text-slate-500 animate-spin" /></div>;
+  if (!admin) return <Login />;
+  const allowed = tabAllowed(activeTab, can);
+  const isBusinessTab = BUSINESS_SCREENS.includes(activeTab);
+  if (allowed && isBusinessTab && !activeBusiness.id) {
+    return (
+      <div className="h-screen bg-slate-950 flex flex-col items-center justify-center text-center p-6 text-slate-300">
+        {error ? <AlertTriangle className="w-8 h-8 text-rose-400 mb-3" /> : <Loader2 className="w-6 h-6 text-slate-500 animate-spin mb-3" />}
+        <p className="text-sm">{error ?? (businesses.length === 0 && !loading ? (hi ? 'लोड हो रहा है…' : 'Loading…') : (hi ? 'लोड हो रहा है…' : 'Loading…'))}</p>
+        {error && <button onClick={reload} className="mt-4 px-4 py-2 bg-slate-800 rounded-lg text-xs">{hi ? 'फिर कोशिश करें' : 'Try again'}</button>}
+      </div>
+    );
+  }
 
   const handleOpenNewInvoice = () => {
     setActiveTab('invoices');
     setIsCreateInvoiceModalOpen(true);
   };
+  const show = (tab: NavTab) => allowed && activeTab === tab;
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans">
@@ -37,8 +64,22 @@ const AppContent: React.FC = () => {
 
         {/* Scrollable Main View */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto">
-            {activeTab === 'dashboard' && (
+          <div className={`max-w-7xl mx-auto transition-opacity ${loading ? 'opacity-60' : ''}`}>
+            {error && (
+              <div className="mb-4 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs rounded-xl p-3 flex items-center justify-between">
+                <span>{error}</span>
+                <button onClick={reload} className="underline">{hi ? 'फिर कोशिश करें' : 'Retry'}</button>
+              </div>
+            )}
+            {!allowed && <NoAccess screen={firstAllowed ? activeTab : null} onBack={firstAllowed ? () => setActiveTab(firstAllowed) : undefined} />}
+
+            {allowed && isBusinessTab && !hasSnapshot && !loading && (
+              <div className="mb-4 bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs rounded-xl p-3 flex items-center space-x-2">
+                <CloudOff className="w-4 h-4 shrink-0" />
+                <span>{hi ? 'इस बिजनेस ने अभी तक ऐप से डेटा सिंक नहीं किया है।' : "This business hasn't synced any data from the app yet."}</span>
+              </div>
+            )}
+            {show('dashboard') && (
               <Dashboard
                 onOpenNewInvoice={handleOpenNewInvoice}
                 onNavigateTab={setActiveTab}
@@ -46,7 +87,7 @@ const AppContent: React.FC = () => {
               />
             )}
 
-            {activeTab === 'invoices' && (
+            {show('invoices') && (
               <Invoices
                 onSelectInvoiceForPrint={setSelectedInvoiceForPrint}
                 isCreateModalOpen={isCreateInvoiceModalOpen}
@@ -54,23 +95,27 @@ const AppContent: React.FC = () => {
               />
             )}
 
-            {activeTab === 'quotations' && <Quotations />}
+            {show('quotations') && <Quotations />}
 
-            {activeTab === 'eway' && <EWayBillEInvoice />}
+            {show('eway') && <EWayBillEInvoice />}
 
-            {activeTab === 'inventory' && <Inventory />}
+            {show('inventory') && <Inventory />}
 
-            {activeTab === 'parties' && <CustomersSuppliers />}
+            {show('parties') && <CustomersSuppliers />}
 
-            {activeTab === 'payments' && <Payments />}
+            {show('payments') && <Payments />}
 
-            {activeTab === 'gst' && <GSTReports />}
+            {show('gst') && <GSTReports />}
 
-            {activeTab === 'subscriptions' && <Subscriptions />}
+            {show('subscriptions') && <Subscriptions />}
 
-            {activeTab === 'api' && <AndroidApiExplorer />}
+            {show('attendance') && <BusinessStaff />}
 
-            {activeTab === 'audit' && <AuditSettings />}
+            {show('api') && <AndroidApiExplorer />}
+
+            {show('audit') && <AuditSettings />}
+
+            {show('staff') && <Staff />}
           </div>
         </main>
       </div>

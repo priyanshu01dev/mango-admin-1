@@ -5,18 +5,24 @@ import { formatINR, TRANSLATIONS, INDIAN_STATES } from '../utils/formatters';
 import { Settings, ShieldCheck, Users, FileText, CheckCircle2, AlertTriangle, Building, Save } from 'lucide-react';
 
 export const AuditSettings: React.FC = () => {
-  const { language, activeBusiness, updateBusinessProfile, auditLogs, showToast } = useBilling();
+  const { language, activeBusiness, auditLogs, showToast, team, setBusinessStatus, can } = useBilling();
+  const canSuspend = can('businesses', 'edit');
+  const canSeeLog = can('audit');
+  const toggleStatus = async () => {
+    const suspend = activeBusiness.status !== 'SUSPENDED';
+    const reason = suspend ? prompt(language === 'hi' ? 'सस्पेंड करने का कारण (मालिक को दिखेगा):' : 'Reason for suspending (shown to the owner):') : undefined;
+    if (suspend && !reason) return;
+    try { await setBusinessStatus(suspend ? 'suspended' : 'active', reason ?? undefined); } catch (e) { showToast((e as Error).message); }
+  };
   const t = TRANSLATIONS[language];
 
   const [activeSubTab, setActiveSubTab] = useState<'BIZ_SETTINGS' | 'USERS_RBAC' | 'AUDIT_LOGS'>('BIZ_SETTINGS');
 
   // Business form state
-  const [formData, setFormData] = useState<BusinessProfile>({ ...activeBusiness });
-
-  const handleSaveSettings = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateBusinessProfile(formData);
-  };
+  // Profile is edited by the owner in the app; shown read-only here.
+  const formData: BusinessProfile = activeBusiness;
+  const setFormData = (_: BusinessProfile) => {};
+  const handleSaveSettings = (e: React.FormEvent) => e.preventDefault();
 
   return (
     <div className="space-y-6">
@@ -51,35 +57,39 @@ export const AuditSettings: React.FC = () => {
           >
             Users & Roles (RBAC)
           </button>
-          <button
+          {canSeeLog && <button
             onClick={() => setActiveSubTab('AUDIT_LOGS')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
               activeSubTab === 'AUDIT_LOGS' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
             }`}
           >
             Security Audit Trail ({auditLogs.length})
-          </button>
+          </button>}
         </div>
       </div>
 
       {/* SUBTAB 1: STORE PROFILE */}
       {activeSubTab === 'BIZ_SETTINGS' && (
         <form onSubmit={handleSaveSettings} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm space-y-6 text-xs">
+          <p className="text-[11px] text-slate-400 -mb-2">{language === 'hi' ? 'यह प्रोफ़ाइल मालिक Mango Invoice ऐप में बदलते हैं — यहाँ केवल देखने के लिए।' : 'Owners edit this profile in the Mango Invoice app — view only here.'}</p>
           <div className="border-b border-slate-800 pb-3 flex justify-between items-center">
             <h3 className="font-extrabold text-sm text-white">Business Information & GST Credentials</h3>
-            <button
-              type="submit"
-              className="flex items-center space-x-1.5 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-bold text-xs shadow-md shadow-emerald-500/20"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span>Save Settings</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <span className={`px-2 py-1 rounded text-[10px] font-bold ${activeBusiness.status === 'SUSPENDED' ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'}`}>{activeBusiness.status}</span>
+              {canSuspend && (
+                <button type="button" onClick={toggleStatus}
+                  className={`flex items-center space-x-1.5 px-4 py-2 rounded-xl font-bold text-xs ${activeBusiness.status === 'SUSPENDED' ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950' : 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30'}`}>
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{activeBusiness.status === 'SUSPENDED' ? (language === 'hi' ? 'फिर से चालू करें' : 'Reactivate') : (language === 'hi' ? 'सस्पेंड करें' : 'Suspend business')}</span>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-[11px] text-slate-400 mb-1">Legal Registered Name</label>
-              <input
+              <input readOnly
                 type="text"
                 required
                 value={formData.name}
@@ -90,7 +100,7 @@ export const AuditSettings: React.FC = () => {
 
             <div>
               <label className="block text-[11px] text-slate-400 mb-1">Trade / Display Name</label>
-              <input
+              <input readOnly
                 type="text"
                 value={formData.tradeName}
                 onChange={e => setFormData({ ...formData, tradeName: e.target.value })}
@@ -100,7 +110,7 @@ export const AuditSettings: React.FC = () => {
 
             <div>
               <label className="block text-[11px] text-slate-400 mb-1">GSTIN Number</label>
-              <input
+              <input readOnly
                 type="text"
                 required
                 value={formData.gstin}
@@ -111,7 +121,7 @@ export const AuditSettings: React.FC = () => {
 
             <div>
               <label className="block text-[11px] text-slate-400 mb-1">PAN Number</label>
-              <input
+              <input readOnly
                 type="text"
                 required
                 value={formData.pan}
@@ -122,7 +132,7 @@ export const AuditSettings: React.FC = () => {
 
             <div>
               <label className="block text-[11px] text-slate-400 mb-1">Contact Phone</label>
-              <input
+              <input readOnly
                 type="text"
                 value={formData.phone}
                 onChange={e => setFormData({ ...formData, phone: e.target.value })}
@@ -132,7 +142,7 @@ export const AuditSettings: React.FC = () => {
 
             <div>
               <label className="block text-[11px] text-slate-400 mb-1">Billing Email</label>
-              <input
+              <input readOnly
                 type="email"
                 value={formData.email}
                 onChange={e => setFormData({ ...formData, email: e.target.value })}
@@ -142,7 +152,7 @@ export const AuditSettings: React.FC = () => {
 
             <div className="md:col-span-2">
               <label className="block text-[11px] text-slate-400 mb-1">Business Store Address</label>
-              <input
+              <input readOnly
                 type="text"
                 value={formData.address}
                 onChange={e => setFormData({ ...formData, address: e.target.value })}
@@ -156,7 +166,7 @@ export const AuditSettings: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-[11px] text-slate-400 mb-1">Bank Name</label>
-                <input
+                <input readOnly
                   type="text"
                   value={formData.bankName}
                   onChange={e => setFormData({ ...formData, bankName: e.target.value })}
@@ -166,7 +176,7 @@ export const AuditSettings: React.FC = () => {
 
               <div>
                 <label className="block text-[11px] text-slate-400 mb-1">Account Number</label>
-                <input
+                <input readOnly
                   type="text"
                   value={formData.bankAccountNumber}
                   onChange={e => setFormData({ ...formData, bankAccountNumber: e.target.value })}
@@ -176,7 +186,7 @@ export const AuditSettings: React.FC = () => {
 
               <div>
                 <label className="block text-[11px] text-slate-400 mb-1">IFSC Code</label>
-                <input
+                <input readOnly
                   type="text"
                   value={formData.bankIfsc}
                   onChange={e => setFormData({ ...formData, bankIfsc: e.target.value.toUpperCase() })}
@@ -186,7 +196,7 @@ export const AuditSettings: React.FC = () => {
 
               <div>
                 <label className="block text-[11px] text-slate-400 mb-1">Bank Branch</label>
-                <input
+                <input readOnly
                   type="text"
                   value={formData.bankBranch}
                   onChange={e => setFormData({ ...formData, bankBranch: e.target.value })}
@@ -196,7 +206,7 @@ export const AuditSettings: React.FC = () => {
 
               <div className="md:col-span-2">
                 <label className="block text-[11px] text-slate-400 mb-1">UPI ID (For Instant QR Code Generation)</label>
-                <input
+                <input readOnly
                   type="text"
                   value={formData.upiId}
                   onChange={e => setFormData({ ...formData, upiId: e.target.value })}
@@ -209,7 +219,7 @@ export const AuditSettings: React.FC = () => {
 
           <div className="border-t border-slate-800 pt-4">
             <label className="block text-[11px] text-slate-400 mb-1">Terms & Conditions (Footer of Invoice)</label>
-            <textarea
+            <textarea readOnly
               rows={3}
               value={formData.terms}
               onChange={e => setFormData({ ...formData, terms: e.target.value })}
@@ -223,8 +233,8 @@ export const AuditSettings: React.FC = () => {
       {activeSubTab === 'USERS_RBAC' && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-sm overflow-hidden">
           <div className="p-4 border-b border-slate-800">
-            <h3 className="font-extrabold text-sm text-white">Staff Roles & Permissions (RBAC)</h3>
-            <p className="text-[11px] text-slate-400 mt-0.5">Control access levels for billing operators and accountants</p>
+            <h3 className="font-extrabold text-sm text-white">{language === 'hi' ? 'बिजनेस की टीम (ऐप से)' : 'Business team (from the app)'}</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5">{language === 'hi' ? 'मालिक ऐप में यूज़र और रोल जोड़ते हैं' : 'Owners add users and roles in the app'}</p>
           </div>
 
           <div className="overflow-x-auto">
@@ -238,47 +248,22 @@ export const AuditSettings: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
-                <tr>
-                  <td className="p-3.5 pl-5">
-                    <div className="font-bold text-white">Priyanshu Kumar</div>
-                    <div className="text-[10px] text-slate-400">priyanshu@gimbooks.internal</div>
-                  </td>
-                  <td className="p-3.5">
-                    <span className="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-bold text-[10px]">
-                      SUPER_ADMIN
-                    </span>
-                  </td>
-                  <td className="p-3.5 text-slate-300 text-[11px]">Full access, Tax filing, Delete invoice, System settings</td>
-                  <td className="p-3.5 text-center text-emerald-400 font-bold">Active</td>
-                </tr>
-
-                <tr>
-                  <td className="p-3.5 pl-5">
-                    <div className="font-bold text-white">Rajesh Kumar</div>
-                    <div className="text-[10px] text-slate-400">rajesh.billing@store.in</div>
-                  </td>
-                  <td className="p-3.5">
-                    <span className="bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded font-bold text-[10px]">
-                      BILLING_MANAGER
-                    </span>
-                  </td>
-                  <td className="p-3.5 text-slate-300 text-[11px]">Create invoices, generate e-way bills, collect payment</td>
-                  <td className="p-3.5 text-center text-emerald-400 font-bold">Active</td>
-                </tr>
-
-                <tr>
-                  <td className="p-3.5 pl-5">
-                    <div className="font-bold text-white">Sunita Sharma (CA)</div>
-                    <div className="text-[10px] text-slate-400">accounts@auditfirm.com</div>
-                  </td>
-                  <td className="p-3.5">
-                    <span className="bg-teal-500/20 text-teal-400 px-2 py-0.5 rounded font-bold text-[10px]">
-                      ACCOUNTANT
-                    </span>
-                  </td>
-                  <td className="p-3.5 text-slate-300 text-[11px]">View reports, export GSTR JSON, customer balance reconciliation</td>
-                  <td className="p-3.5 text-center text-emerald-400 font-bold">Active</td>
-                </tr>
+                {team.map((m, i) => (
+                  <tr key={i}>
+                    <td className="p-3.5 pl-5">
+                      <div className="font-bold text-white">{m.name}</div>
+                      <div className="text-[10px] text-slate-400">+91 {m.phone}</div>
+                    </td>
+                    <td className="p-3.5">
+                      <span className="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-bold text-[10px]">{m.role.toUpperCase()}</span>
+                    </td>
+                    <td className="p-3.5 text-slate-300 text-[11px]">{m.role === 'Owner' ? 'Full access' : m.role}{m.lastActive ? ` · last active ${m.lastActive}` : ''}</td>
+                    <td className={`p-3.5 text-center font-bold ${m.active ? 'text-emerald-400' : 'text-slate-500'}`}>{m.active ? 'Active' : 'Inactive'}</td>
+                  </tr>
+                ))}
+                {team.length === 0 && (
+                  <tr><td colSpan={4} className="p-6 text-center text-slate-400">{language === 'hi' ? 'ऐप से कोई टीम सिंक नहीं हुई' : 'No team synced from the app'}</td></tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -286,7 +271,7 @@ export const AuditSettings: React.FC = () => {
       )}
 
       {/* SUBTAB 3: AUDIT TRAIL */}
-      {activeSubTab === 'AUDIT_LOGS' && (
+      {canSeeLog && activeSubTab === 'AUDIT_LOGS' && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-sm overflow-hidden">
           <div className="p-4 border-b border-slate-800 flex justify-between items-center">
             <div>

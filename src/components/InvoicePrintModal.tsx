@@ -339,7 +339,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ invoice, o
 
           {/* Footer Computer Generated note */}
           <div className="text-center text-[10px] text-slate-500 mt-4">
-            This is a Computer Generated GST Tax Invoice created via GimBooks Pro. Certified under GST Act 2017.
+            This is a Computer Generated GST Tax Invoice created with Mango Invoice. Certified under GST Act 2017.
           </div>
         </div>
       </div>

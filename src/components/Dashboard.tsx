@@ -43,7 +43,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const t = TRANSLATIONS[language];
 
   // Calculations for current active business
-  const currentInvoices = invoices.filter(i => i.businessId === activeBusiness.id);
+  const currentInvoices = invoices.filter(i => i.businessId === activeBusiness.id && i.status !== 'CANCELLED');
+
+  // Last 6 calendar months of sales and GST, from the app's synced invoices.
+  const monthKeys = Array.from({ length: 6 }, (_, k) => {
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - (5 - k));
+    return d.toISOString().slice(0, 7);
+  });
+  const monthly = monthKeys.map((m, k) => {
+    const inMonth = currentInvoices.filter(i => i.invoiceDate.startsWith(m));
+    return {
+      month: new Date(m + '-01T00:00:00').toLocaleDateString('en-IN', { month: 'short' }) + (k === 5 ? (language === 'hi' ? ' (अब तक)' : ' (so far)') : ''),
+      sales: inMonth.reduce((a, i) => a + i.grandTotal, 0),
+      gst: inMonth.reduce((a, i) => a + i.totalGst, 0),
+      isCurrent: k === 5,
+    };
+  });
+  const chartMax = Math.max(1, ...monthly.map(c => c.sales));
+  const thisMonth = monthly[5].sales, lastMonth = monthly[4].sales;
+  const momChange = lastMonth > 0 ? ((thisMonth - lastMonth) / lastMonth) * 100 : null;
   const totalRevenue = currentInvoices.reduce((acc, i) => acc + i.grandTotal, 0);
   const totalPaid = currentInvoices.reduce((acc, i) => acc + i.amountPaid, 0);
   const totalBalanceDue = currentInvoices.reduce((acc, i) => acc + i.balanceDue, 0);
@@ -53,7 +71,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const totalIgst = currentInvoices.reduce((acc, i) => acc + i.igstTotal, 0);
 
   const lowStockProducts = products.filter(
-    p => p.businessId === activeBusiness.id && p.currentStock <= p.minStockAlert
+    p => p.businessId === activeBusiness.id && (!p.isService && p.currentStock < p.minStockAlert)
   );
 
   const totalInventoryValue = products
@@ -88,19 +106,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
         {/* Quick action buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={onOpenNewInvoice}
-            className="flex items-center space-x-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2 rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20 transition-all"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>{t.createNewInvoice}</span>
-          </button>
-          <button
-            onClick={() => onNavigateTab('quotations')}
-            className="flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-700 transition-all"
-          >
-            <span>{t.createQuotation}</span>
-          </button>
+          {null}
+          {null}
           <button
             onClick={() => onNavigateTab('gst')}
             className="flex items-center space-x-1.5 bg-indigo-600/30 hover:bg-indigo-600/40 text-indigo-300 px-3.5 py-2 rounded-xl text-xs font-semibold border border-indigo-500/30 transition-all"
@@ -126,8 +133,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="mt-3">
             <span className="text-2xl font-black text-white">{formatINR(totalRevenue)}</span>
             <div className="flex items-center space-x-1.5 mt-1 text-xs text-emerald-400 font-medium">
-              <ArrowUpRight className="w-3.5 h-3.5" />
-              <span>+18.4% vs last month</span>
+              {momChange === null ? (
+                <span className="text-slate-400">{language === 'hi' ? 'पिछले महीने कोई बिक्री नहीं' : 'No sales last month'}</span>
+              ) : (
+                <>
+                  <ArrowUpRight className={`w-3.5 h-3.5 ${momChange < 0 ? 'rotate-90 text-rose-400' : ''}`} />
+                  <span className={momChange < 0 ? 'text-rose-400' : ''}>{momChange >= 0 ? '+' : ''}{momChange.toFixed(1)}% {language === 'hi' ? 'इस महीने बनाम पिछला' : 'this month vs last'}</span>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -217,29 +230,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           {/* Bar Chart Visualization */}
           <div className="pt-6 pb-2 grid grid-cols-6 gap-3 sm:gap-6 items-end h-48">
-            {[
-              { month: 'Jun', sales: 65, gst: 12 },
-              { month: 'Jul', sales: 82, gst: 15 },
-              { month: 'Aug', sales: 74, gst: 14 },
-              { month: 'Sep', sales: 95, gst: 18 },
-              { month: 'Oct', sales: 110, gst: 21 },
-              { month: 'Nov (Current)', sales: 144, gst: 26, isCurrent: true }
-            ].map(col => (
+            {monthly.map(col => (
               <div key={col.month} className="flex flex-col items-center h-full justify-end group">
-                <div className="text-[10px] text-slate-400 mb-1 opacity-0 group-hover:opacity-100 transition-opacity font-mono">
-                  {col.sales}k
+                <div className="text-[10px] text-slate-400 mb-1 opacity-0 group-hover:opacity-100 transition-opacity font-mono whitespace-nowrap">
+                  {formatINR(col.sales)}
                 </div>
                 <div className="w-full max-w-[42px] flex items-end justify-center space-x-1.5 h-36">
                   {/* Sales bar */}
                   <div
-                    style={{ height: `${(col.sales / 150) * 100}%` }}
+                    title={`${col.month}: ${formatINR(col.sales)}`}
+                    style={{ height: `${(col.sales / chartMax) * 100}%` }}
                     className={`w-1/2 rounded-t transition-all ${
                       col.isCurrent ? 'bg-gradient-to-t from-emerald-600 to-emerald-400' : 'bg-emerald-500/70'
                     }`}
                   ></div>
                   {/* GST bar */}
                   <div
-                    style={{ height: `${(col.gst / 30) * 100}%` }}
+                    title={`GST: ${formatINR(col.gst)}`}
+                    style={{ height: `${(col.gst / chartMax) * 100}%` }}
                     className={`w-1/2 rounded-t transition-all ${
                       col.isCurrent ? 'bg-gradient-to-t from-indigo-600 to-indigo-400' : 'bg-indigo-500/60'
                     }`}
@@ -432,16 +440,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       Remaining: {p.currentStock} {p.unit}
                     </div>
                   </div>
-                  <button
-                    onClick={() => {
-                      adjustProductStock(p.id, 25, 'Quick Reorder from Dashboard');
-                      showToast(`Added +25 ${p.unit} to ${p.name}`);
-                    }}
-                    className="flex items-center space-x-1 px-2.5 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-lg text-[10px] font-bold border border-emerald-500/30 transition-all shrink-0"
-                  >
-                    <PackagePlus className="w-3.5 h-3.5" />
-                    <span>+25 Restock</span>
-                  </button>
+                  {null}
                 </div>
               ))}
 

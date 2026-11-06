@@ -131,7 +131,7 @@ export function numberToWordsINR(amount: number): string {
 // Translations dictionary for bilingual Hindi & English UI
 export const TRANSLATIONS = {
   en: {
-    appName: 'GimBooks Pro',
+    appName: 'Mango Invoice',
     tagline: 'GST Billing, Invoicing & Admin Suite',
     dashboard: 'Dashboard',
     invoices: 'Invoices & Billing',
@@ -144,6 +144,8 @@ export const TRANSLATIONS = {
     subscriptions: 'Subscriptions & SaaS',
     androidApi: 'Android REST API',
     auditLogs: 'Audit & Settings',
+    staffAttendance: 'Staff & Attendance',
+    adminStaff: 'Staff (Admins)',
     totalRevenue: 'Total Revenue',
     totalUsers: 'Total Businesses',
     activeInvoices: 'Invoices Generated',
@@ -169,7 +171,7 @@ export const TRANSLATIONS = {
     markAsPaid: 'Record Payment',
     lowStockAlerts: 'Low Stock Alerts',
     recentTransactions: 'Recent Billing Transactions',
-    monthlySalesTrend: 'Sales & GST Trends (FY 2025-26)',
+    monthlySalesTrend: 'Sales & GST Trends (last 6 months)',
     exportData: 'Export Data',
     gstinLabel: 'GSTIN',
     stateLabel: 'State',
@@ -182,7 +184,7 @@ export const TRANSLATIONS = {
     grandTotal: 'Grand Total'
   },
   hi: {
-    appName: 'गिमबुक्स प्रो',
+    appName: 'मैंगो इनवॉइस',
     tagline: 'जीएसटी बिलिंग, इनवॉइसिंग व एडमिन सूट',
     dashboard: 'डैशबोर्ड (Overview)',
     invoices: 'बिल व इनवॉइस (Invoices)',
@@ -195,6 +197,8 @@ export const TRANSLATIONS = {
     subscriptions: 'सब्सक्रिप्शन व प्लान्स',
     androidApi: 'एंड्रॉइड ऐप REST API',
     auditLogs: 'ऑडिट लॉग व सेटिंग्स',
+    staffAttendance: 'स्टाफ व हाज़िरी',
+    adminStaff: 'स्टाफ (एडमिन)',
     totalRevenue: 'कुल बिक्री (राजस्व)',
     totalUsers: 'कुल रजिस्टर्ड बिजनेस',
     activeInvoices: 'कुल जारी इनवॉइस',

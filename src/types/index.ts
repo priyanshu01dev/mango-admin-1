@@ -30,10 +30,43 @@ export interface BusinessProfile {
   upiId: string;
   signatureText?: string;
   terms: string;
-  activePlan: 'FREE_TRIAL' | 'STARTER' | 'GROWTH' | 'ENTERPRISE';
+  /** Mango plan: FREE | SILVER | GOLD | PLATINUM */
+  activePlan: string;
+  planName?: string;
+  /** active | trial | none */
+  planStatus?: string;
   planValidUntil: string;
   status: 'ACTIVE' | 'SUSPENDED' | 'KYC_PENDING';
+  ownerName?: string;
+  ownerPhone?: string;
+  category?: string;
+  lastSyncAt?: string | null;
+  syncRevision?: number;
 }
+
+/** Plan as stored on the server (backend/src/domain/plans.ts). */
+export interface MangoPlan {
+  id: string;
+  name: string;
+  priceYearly: number;
+  tagline: string;
+  tag: string | null;
+  highlight: boolean;
+  features: string[];
+  limits: Record<string, number | boolean>;
+  active: boolean;
+  businesses: number;
+}
+
+/** Per-screen access level. A missing screen key means no access. */
+export type AccessLevel = 'view' | 'edit';
+/** Admin panel screen keys — must match ADMIN_SCREENS in backend/src/lib/permissions.ts. */
+export type AdminScreen =
+  | 'dashboard' | 'invoices' | 'quotations' | 'eway' | 'inventory' | 'parties' | 'payments' | 'gst'
+  | 'subscriptions' | 'attendance' | 'api' | 'audit' | 'businesses' | 'support' | 'app_config' | 'staff';
+export type PermissionMap = Partial<Record<AdminScreen, AccessLevel>>;
+/** Signed-in admin. Super admins implicitly have every screen at 'edit'. */
+export interface AdminUser { id: string; name: string; email: string; isSuperAdmin: boolean; permissions: PermissionMap }
 
 export interface InvoiceItem {
   id: string;
@@ -120,6 +153,7 @@ export interface Product {
   currentStock: number;
   minStockAlert: number;
   status: 'ACTIVE' | 'INACTIVE';
+  isService?: boolean;
 }
 
 export interface Party {

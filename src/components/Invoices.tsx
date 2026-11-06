@@ -330,13 +330,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
           </div>
 
           {/* New Invoice Button */}
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center space-x-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs shadow-md shadow-emerald-500/20 transition-all"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>{t.createNewInvoice}</span>
-          </button>
+          {null}
         </div>
       </div>
 
@@ -414,13 +408,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
                         IRN ✓
                       </span>
                     ) : (
-                      <button
-                        onClick={() => generateEInvoice(inv.id)}
-                        className="text-[9px] text-slate-400 hover:text-teal-400 block mx-auto underline"
-                        title="Generate IRN on NIC"
-                      >
-                        + IRN
-                      </button>
+                      <span className="text-[9px] text-slate-500 block" title="Generated from the Mango Invoice app">IRN —</span>
                     )}
 
                     {inv.eWayBillStatus === 'GENERATED' ? (
@@ -428,15 +416,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
                         EWB ✓
                       </span>
                     ) : (
-                      <button
-                        onClick={() => {
-                          setEwayInvoice(inv);
-                        }}
-                        className="text-[9px] text-slate-400 hover:text-indigo-400 block mx-auto underline"
-                        title="Generate E-Way Bill"
-                      >
-                        + E-Way
-                      </button>
+                      <span className="text-[9px] text-slate-500 block" title="Generated from the Mango Invoice app">EWB —</span>
                     )}
                   </td>
 
@@ -453,16 +433,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
 
                     {/* Record Payment */}
                     {inv.balanceDue > 0 && (
-                      <button
-                        onClick={() => {
-                          setPayingInvoice(inv);
-                          setPaymentAmount(inv.balanceDue);
-                        }}
-                        className="p-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 transition-colors"
-                        title={t.markAsPaid}
-                      >
-                        <Wallet className="w-3.5 h-3.5" />
-                      </button>
+                      null
                     )}
 
                     {/* WhatsApp */}
@@ -478,17 +449,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
                     </button>
 
                     {/* Delete */}
-                    <button
-                      onClick={() => {
-                        if (confirm(`Delete invoice ${inv.invoiceNumber}?`)) {
-                          deleteInvoice(inv.id);
-                        }
-                      }}
-                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-900/40 text-slate-500 hover:text-rose-400 transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {null}
                   </td>
                 </tr>
               ))}

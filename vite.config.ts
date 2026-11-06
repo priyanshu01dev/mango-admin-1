@@ -12,6 +12,8 @@ export default defineConfig(() => {
       },
     },
     server: {
+      // /api → Mango Invoice backend (../backend). Override with VITE_API_PROXY.
+      proxy: { '/api': { target: process.env.VITE_API_PROXY || 'http://localhost:4000', changeOrigin: true } },
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',

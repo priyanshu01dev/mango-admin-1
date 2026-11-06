@@ -105,13 +105,7 @@ export const Quotations: React.FC = () => {
             />
           </div>
 
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center space-x-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs shadow-md shadow-emerald-500/20"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>{t.createQuotation}</span>
-          </button>
+          {null}
         </div>
       </div>
 
@@ -156,13 +150,7 @@ export const Quotations: React.FC = () => {
                   </td>
                   <td className="p-3.5 pr-5 text-right">
                     {q.status !== 'CONVERTED' ? (
-                      <button
-                        onClick={() => convertQuotationToInvoice(q.id)}
-                        className="flex items-center space-x-1.5 ml-auto px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-bold transition-all"
-                      >
-                        <ArrowRightLeft className="w-3.5 h-3.5" />
-                        <span>{t.convertInvoice}</span>
-                      </button>
+                      null
                     ) : (
                       <span className="text-[11px] text-slate-400">Converted ✓</span>
                     )}

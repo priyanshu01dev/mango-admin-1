@@ -129,13 +129,7 @@ export const CustomersSuppliers: React.FC = () => {
           </div>
         </div>
 
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center space-x-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs shadow-md shadow-emerald-500/20"
-        >
-          <PlusCircle className="w-4 h-4" />
-          <span>+ Add {activeTab === 'CUSTOMER' ? 'Customer' : 'Supplier'}</span>
-        </button>
+        {null}
       </div>
 
       {/* Parties Table */}

@@ -112,13 +112,7 @@ export const Payments: React.FC = () => {
           </div>
         </div>
 
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center space-x-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs shadow-md shadow-emerald-500/20"
-        >
-          <PlusCircle className="w-4 h-4" />
-          <span>+ Record Payment</span>
-        </button>
+        {null}
       </div>
 
       {/* Table */}
