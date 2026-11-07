@@ -15,7 +15,13 @@ import {
   Settings,
   ShieldCheck,
   CalendarCheck,
-  UserCog
+  UserCog,
+  UtensilsCrossed,
+  BadgeCheck,
+  Megaphone,
+  Gift,
+  ShoppingBag,
+  LifeBuoy
 } from 'lucide-react';
 
 export type NavTab =
@@ -29,6 +35,12 @@ export type NavTab =
   | 'gst'
   | 'subscriptions'
   | 'attendance'
+  | 'hospitality'
+  | 'licences'
+  | 'marketing'
+  | 'loyalty'
+  | 'delivery'
+  | 'support'
   | 'api'
   | 'audit'
   | 'staff';
@@ -38,7 +50,8 @@ export type NavTab =
 export const tabAllowed = (tab: NavTab, can: (s: NavTab | 'businesses') => boolean) =>
   tab === 'audit' ? can('audit') || can('businesses') : can(tab);
 
-export const NAV_ORDER: NavTab[] = ['dashboard', 'invoices', 'quotations', 'eway', 'inventory', 'parties', 'payments', 'gst', 'subscriptions', 'attendance', 'api', 'audit', 'staff'];
+export const NAV_ORDER: NavTab[] = ['dashboard', 'invoices', 'quotations', 'eway', 'inventory', 'parties', 'payments', 'gst', 'subscriptions', 'attendance',
+  'hospitality', 'licences', 'marketing', 'loyalty', 'delivery', 'support', 'api', 'audit', 'staff'];
 
 interface SidebarProps {
   activeTab: NavTab;
@@ -108,6 +121,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
       label: t.staffAttendance,
       icon: CalendarCheck
     },
+    { id: 'hospitality', label: t.hospitality, icon: UtensilsCrossed },
+    { id: 'licences', label: t.licences, icon: BadgeCheck },
+    { id: 'marketing', label: t.marketing, icon: Megaphone },
+    { id: 'loyalty', label: t.loyalty, icon: Gift },
+    { id: 'delivery', label: t.delivery, icon: ShoppingBag },
+    { id: 'support', label: language === 'hi' ? 'सपोर्ट' : 'Support', icon: LifeBuoy },
     {
       id: 'api',
       label: t.androidApi,

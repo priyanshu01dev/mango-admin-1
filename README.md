@@ -25,3 +25,27 @@ Sign in with the backend admin (default `admin@mangoinvoice.in` / `ChangeMe@123`
   The sidebar shows only the screens an admin may open. Other screens show "No access", and edit buttons are disabled on view-only screens.
   The backend enforces the same rules on every request. Only super admins can create super admins.
 - **Staff & attendance**: read-only view of the selected business's app staff, their app permissions, today's attendance, the monthly summary, visits and salary payments.
+
+## Feature screens built on the app snapshot
+
+These read the selected business's data **as synced from the phone** (read-only, like the books above):
+
+- **Hotel & Restaurant**: table floor, running orders, KOTs (incl. cancellations), sales by order type, top dishes; rooms, bookings, arrivals / check-outs, 30-day occupancy and ADR. Guest ID numbers are masked.
+- **Staff & Attendance** (extra section): staff the owner runs on the shop phone with PIN logins — permissions, selfie + GPS check-ins, payroll per month, salary history, store visits, and the field-staff route on Google Maps.
+- **Food & Trade Licences**: the business's FSSAI / trade licences, document checklist, expiry and renewal alerts; plus the **Licence desk** — every business's assisted applications, where admins with *edit* set status and the government reference.
+- **Marketing, Ads & Coins**: coin ledger and server recharge payments, ad accounts and campaigns (spend, reach, leads, cost per lead), AI videos, the digital visiting card and premium access.
+- **Loyalty & Customer IDs**: members, points (derived from invoices, same rule as the app), redemptions and outstanding liability.
+- **Online Orders & Rides**: Zomato / Swiggy / ONDC integrations (API keys masked), orders, commission and payouts due; Uber / Ola / Rapido rides.
+
+New permission keys: `hospitality`, `licences`, `marketing`, `loyalty`, `delivery` (already in `backend/src/lib/permissions.ts`).
+
+### Backend endpoints these screens use (implemented in ../backend)
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/admin/businesses/:id/snapshot` | `{ snapshot, revision, updatedAt }` — the stored sync snapshot (404 with code `no_snapshot` if the business never synced) |
+| `GET /api/admin/licences/applications?status=open` | `{ data: [{ id, businessId, businessName, kind, action, category, holderName, premises, tradeType, years, documents[], status, reference, note, createdAt }] }` |
+| `PATCH /api/admin/licences/applications/:id` | body `{ status, reference, note }` |
+| `GET /api/admin/businesses/:id/coin-orders` | `{ data: [{ id, packId, coins, amount, status, createdAt, paidAt, gatewayRef }] }` |
+
+Against an older backend without them, each screen shows a clear "endpoint not found" note instead of failing.

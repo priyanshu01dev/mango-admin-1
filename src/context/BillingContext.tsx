@@ -110,7 +110,8 @@ const EMPTY_BUSINESS: BusinessProfile = {
 const PLAN_CODES: Record<string, string> = { free: 'FREE', silver: 'SILVER', gold: 'GOLD', platinum: 'PLATINUM' };
 
 /** Screens that show one business's data (backend BUSINESS_SCREENS). */
-export const BUSINESS_SCREENS: AdminScreen[] = ['dashboard', 'invoices', 'quotations', 'eway', 'inventory', 'parties', 'payments', 'gst', 'subscriptions', 'attendance', 'audit', 'businesses'];
+export const BUSINESS_SCREENS: AdminScreen[] = ['dashboard', 'invoices', 'quotations', 'eway', 'inventory', 'parties', 'payments', 'gst', 'subscriptions', 'attendance', 'audit', 'businesses',
+  'hospitality', 'licences', 'marketing', 'loyalty', 'delivery'];
 
 export const canAccess = (admin: AdminUser | null, screen: AdminScreen, level: AccessLevel = 'view') => {
   if (!admin) return false;

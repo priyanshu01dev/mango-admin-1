@@ -23,6 +23,16 @@ const ENDPOINTS: Endpoint[] = [
   { method: 'POST', path: '/api/v1/attendance/check-in', group: 'Staff', desc: 'Staff check-in with selfie + location (geofenced)', auth: true, body: { selfieFileId: 'fil_…', lat: 19.076, lng: 72.8777, accuracy: 10, deviceTime: '2026-11-06T09:30:00+05:30' } },
   { method: 'POST', path: '/api/v1/location/pings', group: 'Staff', desc: 'Batched location pings while checked in', auth: true, body: { pings: [{ lat: 19.08, lng: 72.88, deviceTime: '2026-11-06T11:00:00+05:30' }] } },
   { method: 'GET', path: '/api/v1/payroll/me', group: 'Staff', desc: 'Payslip JSON for the signed-in staff member (backend/docs/staff-api.md)', auth: true },
+  // Called by the app's newer modules (services/FeatureApi.kt). Marked "new" until the backend ships them.
+  { method: 'POST', path: '/api/v1/attendance/check-out', group: 'Staff (new)', desc: 'Staff check-out with location', auth: true, body: { staffId: 'st_…', lat: 21.25, lng: 81.63, deviceTime: '2026-11-06T18:30:00+05:30' } },
+  { method: 'POST', path: '/api/v1/coins/checkout', group: 'Coins (new)', desc: 'Start a coin-pack payment → { orderId, paymentUrl }', auth: true, body: { packId: 'c500' } },
+  { method: 'GET', path: '/api/v1/coins/orders/{id}', group: 'Coins (new)', desc: 'Payment status → { status: "paid", coins }', auth: true },
+  { method: 'POST', path: '/api/v1/ai/video-script', group: 'Marketing (new)', desc: 'AI writes promo-video scene captions → { scenes: [] }', auth: true, body: { prompt: 'Diwali sweets sale', business: 'Shree Ganesh Sweets', style: 'Festive' } },
+  { method: 'POST', path: '/api/v1/ads/connect', group: 'Marketing (new)', desc: 'OAuth URL to connect Instagram / Facebook / YouTube / Google Ads', auth: true, body: { platform: 'INSTAGRAM' } },
+  { method: 'POST', path: '/api/v1/ads/campaigns', group: 'Marketing (new)', desc: 'Publish a paid campaign with the stored platform tokens → { ids }', auth: true, body: { name: 'Diwali offer', objective: 'VISITS', dailyBudget: 200, days: 7, radiusKm: 5, caption: '…', platforms: ['INSTAGRAM', 'FACEBOOK'] } },
+  { method: 'POST', path: '/api/v1/licences/applications', group: 'Licences (new)', desc: 'Send an FSSAI / trade licence application to the Mango licence desk → { reference }', auth: true, body: { kind: 'FSSAI', action: 'NEW', category: 'BASIC', holderName: 'Ramesh', premises: '…', years: 1, documents: [] } },
+  { method: 'GET', path: '/api/v1/integrations/orders?status=new', group: 'Delivery (new)', desc: 'New Zomato / Swiggy / ONDC orders received from the POS-partner webhook', auth: true },
+  { method: 'POST', path: '/api/v1/integrations/orders/{id}/status', group: 'Delivery (new)', desc: 'Accept / ready / delivered / reject an aggregator order', auth: true, body: { status: 'ACCEPTED' } },
 ];
 
 const KOTLIN = `// MangoInvoice/app/src/main/java/com/firstwave/mangoinvoice/services/ApiServices.kt

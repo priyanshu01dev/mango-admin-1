@@ -11,7 +11,8 @@ interface StaffAdmin {
   legacyRole: string | null; lastLoginAt: string | null; createdAt: string;
 }
 
-const SCREENS: AdminScreen[] = ['dashboard', 'invoices', 'quotations', 'eway', 'inventory', 'parties', 'payments', 'gst', 'subscriptions', 'attendance', 'api', 'audit', 'businesses', 'support', 'app_config', 'staff'];
+const SCREENS: AdminScreen[] = ['dashboard', 'invoices', 'quotations', 'eway', 'inventory', 'parties', 'payments', 'gst', 'subscriptions', 'attendance',
+  'hospitality', 'licences', 'marketing', 'loyalty', 'delivery', 'api', 'audit', 'businesses', 'support', 'app_config', 'staff'];
 
 function screenLabel(s: AdminScreen, lang: 'en' | 'hi'): string {
   const t = TRANSLATIONS[lang] as Record<string, string>;
@@ -22,11 +23,12 @@ function screenLabel(s: AdminScreen, lang: 'en' | 'hi'): string {
     support: lang === 'hi' ? 'सपोर्ट टिकट, घोषणाएँ, ऐप यूज़र' : 'Support tickets, broadcasts, app users',
     app_config: lang === 'hi' ? 'ऐप सेटिंग्स (मेंटेनेंस, वर्ज़न)' : 'App settings (maintenance, versions)',
     staff: t.adminStaff,
+    hospitality: t.hospitality, licences: t.licences, marketing: t.marketing, loyalty: t.loyalty, delivery: t.delivery,
   };
   return map[s];
 }
 /** Screens that exist on the server but have no page in this panel yet. */
-const API_ONLY: AdminScreen[] = ['support', 'app_config'];
+const API_ONLY: AdminScreen[] = ['app_config'];
 
 const LEVELS: (AccessLevel | 'none')[] = ['none', 'view', 'edit'];
 const rank = (l: AccessLevel | 'none' | undefined) => (l === 'edit' ? 2 : l === 'view' ? 1 : 0);
@@ -191,7 +193,7 @@ export const Staff: React.FC = () => {
       </div>
 
       {form && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1d1a17]/50 p-4">
           <div className="bg-slate-900 border border-slate-700 text-white rounded-2xl p-6 max-w-2xl w-full shadow-2xl space-y-4 text-xs max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <h3 className="font-bold text-sm">{form.id ? (hi ? `एक्सेस: ${form.name}` : `Access: ${form.name}`) : (hi ? 'नया एडमिन' : 'New admin')}</h3>
@@ -280,7 +282,7 @@ export const Staff: React.FC = () => {
       )}
 
       {resetFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1d1a17]/50 p-4">
           <div className="bg-slate-900 border border-slate-700 text-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <h3 className="font-bold text-sm">{hi ? `पासवर्ड रीसेट: ${resetFor.name}` : `Reset password: ${resetFor.name}`}</h3>

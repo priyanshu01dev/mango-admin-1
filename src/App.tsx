@@ -18,6 +18,12 @@ import { Login } from './components/Login';
 import { Staff } from './components/Staff';
 import { BusinessStaff } from './components/BusinessStaff';
 import { NoAccess } from './components/NoAccess';
+import { Hospitality } from './components/Hospitality';
+import { Licences } from './components/Licences';
+import { Marketing } from './components/Marketing';
+import { Loyalty } from './components/Loyalty';
+import { Delivery } from './components/Delivery';
+import { Support } from './components/Support';
 import { Loader2, AlertTriangle, CloudOff } from 'lucide-react';
 
 const AppContent: React.FC = () => {
@@ -110,6 +116,18 @@ const AppContent: React.FC = () => {
             {show('subscriptions') && <Subscriptions />}
 
             {show('attendance') && <BusinessStaff />}
+
+            {show('hospitality') && <Hospitality />}
+
+            {show('licences') && <Licences />}
+
+            {show('marketing') && <Marketing />}
+
+            {show('loyalty') && <Loyalty />}
+
+            {show('delivery') && <Delivery />}
+
+            {show('support') && <Support />}
 
             {show('api') && <AndroidApiExplorer />}
 

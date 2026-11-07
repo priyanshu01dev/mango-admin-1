@@ -3,6 +3,7 @@ import { CalendarCheck, Loader2, MapPin, Users } from 'lucide-react';
 import { useBilling } from '../context/BillingContext';
 import { api } from '../lib/api';
 import { formatINR, TRANSLATIONS } from '../utils/formatters';
+import { AppStaff } from './AppStaff';
 
 /** Shape of GET /api/admin/businesses/:id/staff (see backend/src/modules/admin/staff.ts). */
 interface Member { id: string; phone: string; name: string; userId: string | null; permissions: Record<string, 'view' | 'edit'>; status: 'active' | 'inactive'; joinedAt: string | null; createdAt: string }
@@ -167,6 +168,9 @@ export const BusinessStaff: React.FC = () => {
           </div>
         </>
       )}
+
+      {/* Staff the owner runs on the shop phone (PIN logins, selfie check-in, salary, visits, tracking) */}
+      <AppStaff month={month} />
     </div>
   );
 };

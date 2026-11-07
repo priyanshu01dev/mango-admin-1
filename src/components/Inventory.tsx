@@ -235,7 +235,7 @@ export const Inventory: React.FC = () => {
 
       {/* ADJUST STOCK MODAL */}
       {adjustingProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1d1a17]/50 p-4">
           <div className="bg-slate-900 border border-slate-700 text-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <h3 className="font-bold text-sm text-white">Adjust Stock: {adjustingProduct.name}</h3>
@@ -325,7 +325,7 @@ export const Inventory: React.FC = () => {
 
       {/* ADD PRODUCT MODAL */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1d1a17]/50 p-4">
           <div className="bg-slate-900 border border-slate-700 text-white rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4 text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <h3 className="font-bold text-sm text-white">Add New Product / Item</h3>

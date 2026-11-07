@@ -172,7 +172,7 @@ export const Quotations: React.FC = () => {
 
       {/* CREATE MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1d1a17]/50 p-4">
           <div className="bg-slate-900 border border-slate-700 text-white rounded-2xl p-6 max-w-xl w-full shadow-2xl space-y-4 text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <h3 className="font-bold text-sm text-white">Create New Quotation / Estimate</h3>

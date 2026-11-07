@@ -468,7 +468,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
 
       {/* CREATE NEW GST INVOICE MODAL */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-2 sm:p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1d1a17]/50 p-2 sm:p-4 overflow-y-auto">
           <div className="relative w-full max-w-5xl bg-slate-900 border border-slate-700 text-white rounded-2xl shadow-2xl overflow-hidden my-auto max-h-[96vh] flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 bg-slate-850 border-b border-slate-850">
@@ -869,7 +869,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
 
       {/* RECORD PAYMENT MODAL */}
       {payingInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1d1a17]/50 p-4">
           <div className="bg-slate-900 border border-slate-700 text-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <h3 className="font-bold text-sm text-white">Record Invoice Payment</h3>
@@ -951,7 +951,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
 
       {/* GENERATE E-WAY BILL MODAL */}
       {ewayInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1d1a17]/50 p-4">
           <div className="bg-slate-900 border border-slate-700 text-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <h3 className="font-bold text-sm text-white">Generate E-Way Bill (NIC GST)</h3>

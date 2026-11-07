@@ -63,7 +63,8 @@ export type AccessLevel = 'view' | 'edit';
 /** Admin panel screen keys — must match ADMIN_SCREENS in backend/src/lib/permissions.ts. */
 export type AdminScreen =
   | 'dashboard' | 'invoices' | 'quotations' | 'eway' | 'inventory' | 'parties' | 'payments' | 'gst'
-  | 'subscriptions' | 'attendance' | 'api' | 'audit' | 'businesses' | 'support' | 'app_config' | 'staff';
+  | 'subscriptions' | 'attendance' | 'api' | 'audit' | 'businesses' | 'support' | 'app_config' | 'staff'
+  | 'hospitality' | 'licences' | 'marketing' | 'loyalty' | 'delivery';
 export type PermissionMap = Partial<Record<AdminScreen, AccessLevel>>;
 /** Signed-in admin. Super admins implicitly have every screen at 'edit'. */
 export interface AdminUser { id: string; name: string; email: string; isSuperAdmin: boolean; permissions: PermissionMap }

@@ -1,9 +1,99 @@
 @import "tailwindcss";
 
+/*
+ * Mango Invoice brand theme (from the logo): cream paper, mango orange, gold, ink text and leaf green.
+ * The components were written for a dark slate theme, so the palette is remapped here instead of in
+ * every file: the slate scale is inverted (950 = page cream, 900 = white card, 100 = ink text),
+ * "white" text becomes ink, emerald (the old accent) becomes mango orange, and the status colours
+ * get darker 100–400 shades so they read on a light background. Invoice "paper" previews opt out
+ * with the .paper class below.
+ */
+@theme {
+  --color-slate-50: #14110e;
+  --color-slate-100: #1d1a17;
+  --color-slate-200: #2b2622;
+  --color-slate-300: #3d3833;
+  --color-slate-400: #6f6760;
+  --color-slate-500: #8a8178;
+  --color-slate-600: #b9ada1;
+  --color-slate-700: #eadbc9;
+  --color-slate-800: #f7ede2;
+  --color-slate-900: #ffffff;
+  --color-slate-950: #fdf7f1;
+
+  --color-white: #1d1a17;
+
+  /* brand accent: mango orange (light shades used as text on tints → dark oranges) */
+  --color-emerald-50: #6e2806;
+  --color-emerald-100: #7d2f07;
+  --color-emerald-200: #8f3608;
+  --color-emerald-300: #a83e0a;
+  --color-emerald-400: #c2480c;
+  --color-emerald-500: #ee6a16;
+  --color-emerald-600: #d2520c;
+  --color-emerald-700: #a83e0a;
+  --color-emerald-800: #8f3608;
+  --color-emerald-900: #6e2806;
+  --color-emerald-950: #4a1a04;
+
+  --color-amber-100: #6b3a00;
+  --color-amber-200: #7c4300;
+  --color-amber-300: #8f4f00;
+  --color-amber-400: #a35c00;
+
+  --color-rose-100: #7a1a12;
+  --color-rose-200: #8f2016;
+  --color-rose-300: #b42318;
+  --color-rose-400: #c8321f;
+
+  /* secondary: "First Wave" blue */
+  --color-indigo-100: #10305a;
+  --color-indigo-200: #163d71;
+  --color-indigo-300: #1f5aa6;
+  --color-indigo-400: #2563b5;
+  --color-indigo-500: #3a7bd5;
+  --color-indigo-600: #1f5aa6;
+
+  /* leaf green */
+  --color-teal-300: #1f6b30;
+  --color-teal-400: #237a36;
+  --color-teal-500: #2f9b45;
+}
+
+/* Invoice / e-way bill previews are printed documents: keep the original neutral palette. */
+.paper {
+  --color-white: #ffffff;
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+  --color-slate-950: #020617;
+  --color-emerald-50: #ecfdf5;
+  --color-emerald-100: #d1fae5;
+  --color-emerald-200: #a7f3d0;
+  --color-emerald-300: #6ee7b7;
+  --color-emerald-400: #34d399;
+  --color-emerald-500: #ee6a16;
+  --color-emerald-600: #d2520c;
+  --color-emerald-700: #a83e0a;
+  --color-emerald-800: #8f3608;
+  --color-emerald-900: #6e2806;
+}
+
 @layer base {
   body {
     font-family: 'Plus Jakarta Sans', 'Noto Sans Devanagari', system-ui, -apple-system, sans-serif;
+    background: #fdf7f1;
+    color: #1d1a17;
   }
+  /* soft warm shadows instead of the dark theme's black ones */
+  .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl { --tw-shadow-color: rgb(110 40 6 / 0.08); }
 }
 
 @media print {
@@ -23,18 +113,18 @@
   }
 }
 
-/* Custom slick scrollbars */
+/* Warm scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(247, 237, 226, 0.8);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.4);
+  background: rgba(238, 106, 22, 0.35);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.8);
+  background: rgba(238, 106, 22, 0.6);
 }

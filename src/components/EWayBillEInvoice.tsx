@@ -155,8 +155,8 @@ export const EWayBillEInvoice: React.FC = () => {
 
       {/* PRINTABLE E-WAY BILL SLIP MODAL */}
       {selectedEwbForPrint && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="bg-white text-slate-900 rounded-2xl p-6 max-w-xl w-full shadow-2xl text-xs space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1d1a17]/50 p-4">
+          <div className="paper bg-white text-slate-900 rounded-2xl p-6 max-w-xl w-full shadow-2xl text-xs space-y-4">
             <div className="flex items-center justify-between border-b pb-3 border-slate-300">
               <div className="flex items-center space-x-2">
                 <Truck className="w-5 h-5 text-indigo-700" />
